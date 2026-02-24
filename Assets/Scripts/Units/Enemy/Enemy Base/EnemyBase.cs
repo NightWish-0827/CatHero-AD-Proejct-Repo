@@ -3,6 +3,7 @@ using R3;
 using DG.Tweening;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using System; 
 
 public abstract class EnemyBase : MonoBehaviour, IEnemy
 {
@@ -146,7 +147,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         }
 
         float cooldown = _stat != null ? _stat.AttackCooldown : 1.5f;
-        await UniTask.Delay(System.TimeSpan.FromSeconds(cooldown), cancellationToken: token);
+        await UniTask.Delay(TimeSpan.FromSeconds(cooldown), cancellationToken: token);
 
         if (currentState != EnemyState.Dead)
         {
