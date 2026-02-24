@@ -3,15 +3,25 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class CameraFollow : MonoBehaviour
 {
+    private enum FollowUpdateMode
+    {
+        LateUpdate = 0,
+        FixedUpdate = 1,
+        PreCull = 2,
+    }
+
     [Header("Target")]
     [SerializeField] private Transform target;
     [SerializeField] private bool autoFindPlayer = true;
 
     [Header("Follow")]
+    [SerializeField] private FollowUpdateMode updateMode = FollowUpdateMode.PreCull;
     [SerializeField] private float smoothSpeed = 5f;
     [SerializeField] private Vector3 offset = new Vector3(0f, 0f, -10f);
 
     public Transform Target { get => target; set => target = value; }
+
+    private int _lastUpdatedFrame = -1;
 
     private void Awake()
     {
@@ -24,9 +34,30 @@ public class CameraFollow : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (updateMode != FollowUpdateMode.LateUpdate) return;
+        Follow(Time.deltaTime);
+    }
+
+    private void FixedUpdate()
+    {
+        if (updateMode != FollowUpdateMode.FixedUpdate) return;
+        Follow(Time.fixedDeltaTime);
+    }
+
+    private void OnPreCull()
+    {
+        if (updateMode != FollowUpdateMode.PreCull) return;
+        if (_lastUpdatedFrame == Time.frameCount) return;
+        _lastUpdatedFrame = Time.frameCount;
+        Follow(Time.deltaTime);
+    }
+
+    private void Follow(float deltaTime)
+    {
         if (target == null) return;
 
         Vector3 desired = target.position + offset;
-        transform.position = Vector3.Lerp(transform.position, desired, smoothSpeed * Time.deltaTime);
+        float t = 1f - Mathf.Exp(-smoothSpeed * Mathf.Max(0f, deltaTime));
+        transform.position = Vector3.Lerp(transform.position, desired, t);
     }
 }

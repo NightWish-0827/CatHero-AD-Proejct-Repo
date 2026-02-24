@@ -97,6 +97,7 @@ GameManager.StartStage()
 CatHeroPlayer
     → [Inject] _stat, _movement, _projectileLauncher, _visual (Root가 배분)
     → PlayerStat: PC Stat SO에서 스탯 제공
+    → EnemyRegistry.GetFrontMostInRange()로 "앞줄(전방) 우선" 타겟 선택
     → ProjectileLauncher.Fire() → 투사체 발사
     → OnPlayerHit 구독 → HP 감소 → 사망 시 OnPlayerDeath
 
@@ -157,7 +158,9 @@ Projectile
   - ObjectInstaller → **Bake Dependencies** 실행
 - **Managers** (또는 Scene Root): ObjectInstaller, SceneInstaller, GameManager
 - **Main Camera** + CameraFollow
-- **EnemySpawner**: enemyPrefab (ObjectInstaller + EnemyStat + EnemyVisual 포함 프리팹)
+- **EnemySpawner**: enemyPrefab, spawnDistanceAhead (플레이어 우측 일정 거리에서 스폰, 좌→우 플로우)
+  - spawnMode = Single / Cluster (군집형은 Cluster)
+  - Cluster 옵션: clusterCount / clusterSpacingX / clusterVerticalJitter
 - **PoolManager**
 
 ### 적 프리팹 (NightmareMonster)

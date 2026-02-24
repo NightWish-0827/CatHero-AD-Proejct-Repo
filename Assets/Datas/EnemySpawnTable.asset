@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03b79530dfe80984baf355625ed37790, type: 3}
+  m_Name: EnemySpawnTable
+  m_EditorClassIdentifier: 
+  entries:
+  - id: 
+    prefab: {fileID: 578481109589682359, guid: 93454dd9966a1fb418c9323e41379467, type: 3}
+    weight: 0
+    surface: 1
+    pattern: 1
+    spawnYOffset: 1.5
+    lockYAfterSpawn: 0
+    singleVerticalJitter: 0
+    clusterCount: {x: 1, y: 1}
+    clusterSpacingX: 1
+    clusterVerticalJitter: 1
+  - id: 
+    prefab: {fileID: 578481109589682359, guid: 0af62aac7cab797459d2e1962181b904, type: 3}
+    weight: 0
+    surface: 0
+    pattern: 1
+    spawnYOffset: 0
+    lockYAfterSpawn: 1
+    singleVerticalJitter: 0
+    clusterCount: {x: 1, y: 0}
+    clusterSpacingX: 1
+    clusterVerticalJitter: 0

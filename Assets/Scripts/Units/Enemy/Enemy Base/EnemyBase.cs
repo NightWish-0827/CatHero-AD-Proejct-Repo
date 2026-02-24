@@ -20,6 +20,9 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
     private SpriteRenderer HitEffectSprite => _visual != null ? _visual.SpriteRenderer : null;
 
+    private bool _lockY;
+    private float _lockedY;
+
     public EnemyState CurrentState => currentState;
     public bool IsAlive => currentState != EnemyState.Dead;
     public Transform Target { get => targetTransform; set => targetTransform = value; }
@@ -65,6 +68,19 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         SpawnSequenceAsync(poolCts.Token).Forget();
     }
 
+    public void ConfigureVerticalLock(bool lockY, float lockedY)
+    {
+        _lockY = lockY;
+        _lockedY = lockedY;
+
+        if (_lockY)
+        {
+            var p = myTransform.position;
+            p.y = _lockedY;
+            myTransform.position = p;
+        }
+    }
+
     public virtual void TakeDamage(float damage)
     {
         if (currentState == EnemyState.Dead) return;
@@ -103,20 +119,34 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         {
             if (targetTransform == null || _stat == null) break;
 
+            if (_lockY)
+            {
+                var p = myTransform.position;
+                if (!Mathf.Approximately(p.y, _lockedY))
+                {
+                    p.y = _lockedY;
+                    myTransform.position = p;
+                }
+            }
+
             if (currentState == EnemyState.Chasing)
             {
-                float sqrDistance = (targetTransform.position - myTransform.position).sqrMagnitude;
-
-                if (sqrDistance <= _stat.AttackRange * _stat.AttackRange)
+                // 지상 적 기본형: y축 추적을 하지 않고, 수평(x) 기준으로만 전진/공격 판정
+                float absDx = Mathf.Abs(targetTransform.position.x - myTransform.position.x);
+                if (absDx <= _stat.AttackRange)
                 {
                     currentState = EnemyState.Attacking;
                     await AttackSequenceAsync(token);
                 }
                 else
                 {
+                    Vector3 targetPos = targetTransform.position;
+                    targetPos.y = _lockY ? _lockedY : myTransform.position.y;
+                    targetPos.z = myTransform.position.z;
+
                     myTransform.position = Vector3.MoveTowards(
                         myTransform.position,
-                        targetTransform.position,
+                        targetPos,
                         _stat.MoveSpeed * Time.deltaTime);
 
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
@@ -131,7 +161,24 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
     protected virtual async UniTask AttackSequenceAsync(CancellationToken token)
     {
-        Vector3 directionToTarget = (targetTransform.position - myTransform.position).normalized;
+        Vector3 directionToTarget = (targetTransform.position - myTransform.position);
+        directionToTarget.y = 0f;
+        directionToTarget.z = 0f;
+        if (directionToTarget.sqrMagnitude < 0.0001f)
+        {
+            directionToTarget = Vector3.left;
+        }
+        else
+        {
+            directionToTarget.Normalize();
+        }
+
+        if (_lockY)
+        {
+            var p = myTransform.position;
+            p.y = _lockedY;
+            myTransform.position = p;
+        }
 
         await DOTweenUniTaskUtil.AwaitTweenAsync(
             myTransform.DOMove(myTransform.position - directionToTarget * 0.3f, 0.2f).SetEase(Ease.OutQuad),
