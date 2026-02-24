@@ -102,10 +102,7 @@ public class ObjectInstaller : MonoBehaviour
         {
             if (target == null) continue;
 
-            var fields = target.GetType()
-                .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-            foreach (var field in fields)
+            foreach (var field in TypeDataCache.GetAllInstanceFields(target.GetType()))
             {
                 // [Inject] : 로컬(같은 루트 계층)에서 타입이 맞는 컴포넌트 검색 후 Bake
                 if (System.Attribute.IsDefined(field, typeof(InjectAttribute)))

@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>플레이어 스탯 ScriptableObject. PC Stat SO.</summary>
 [CreateAssetMenu(fileName = "PlayerStat", menuName = "CatHero/Player Stat")]
 public class PlayerStatSO : ScriptableObject
 {

@@ -58,7 +58,8 @@ public class PoolManager : MonoBehaviour
     {
         obj.SetActive(true);
 
-        if (obj.TryGetComponent(out IPoolable poolable))
+        var poolable = obj.GetComponentInChildren<IPoolable>();
+        if (poolable != null)
         {
             poolable.OnSpawn();
         }
@@ -66,7 +67,8 @@ public class PoolManager : MonoBehaviour
 
     private void OnReturnedToPool(GameObject obj)
     {
-        if (obj.TryGetComponent(out IPoolable poolable))
+        var poolable = obj.GetComponentInChildren<IPoolable>();
+        if (poolable != null)
         {
             poolable.OnDespawn();
         }

@@ -26,7 +26,7 @@ Assets/Scripts/
 │   │   ├── Projectile.cs
 │   │   └── ProjectileLauncher.cs
 │   └── Enemy/
-│       ├── Enemy Base/   # EnemyBase, IEnemy, EnemyStatDB, EnemyState
+│       ├── Enemy Base/   # EnemyBase, IEnemy, EnemyStat, EnemyStatSO, EnemyVisual, EnemyState
 │       └── NightmareMonster.cs
 └── Utils/                # 풀, 이벤트 버스, 유틸
     ├── R3 Bus/GameEvents.cs
@@ -59,10 +59,30 @@ Assets/Scripts/
 - **CatHeroPlayer**는 Movement, ProjectileLauncher, Visual을 **직접 참조하지 않음**.
 - `[Inject]` 필드로 ObjectInstaller가 Bake한 값을 사용. (에디터에서 "Bake Dependencies" 실행)
 
+### 적 계층 (플레이어와 동일 패턴)
+
+**실제 프리팹 구조** ([Enemy Installer] 루트):
+
+```
+[Enemy Installer] (루트)             ← ObjectInstaller만 부착. Bake Dependencies 실행.
+└── Enemy Prefab (자식)
+    ├── NightmareMonster (EnemyBase)  ← [Inject]로 Stat, Visual 수신
+    ├── [Enemy Visual]               ← EnemyVisual, SpriteRenderer (피격 효과)
+    └── Enemy Stat                   ← EnemyStat (Enemy Stat SO 참조)
+```
+
+> EnemySpawner, PoolManager는 `GetComponentInChildren`으로 자식의 IEnemy/IPoolable을 검색.
+> Despawn 시 `transform.root.gameObject`로 루트를 반환.
+
+### Enemy Stat SO
+
+- **EnemyStatSO**: ScriptableObject. CreateAssetMenu → CatHero/Enemy Stat
+- **EnemyStat**: Root 하위 Mono. `[SerializeField] EnemyStatSO` 참조.
+
 ### UNInject 사용법
 
-1. Player Root에 **ObjectInstaller** 부착
-2. CatHeroPlayer에 `[Inject, SerializeField]` 로 의존성 필드 선언
+1. Player/Enemy Root에 **ObjectInstaller** 부착
+2. CatHeroPlayer/EnemyBase에 `[Inject, SerializeField]` 로 의존성 필드 선언
 3. ObjectInstaller Inspector에서 **🍩 Bake Dependencies** 클릭
 
 ---
@@ -72,7 +92,7 @@ Assets/Scripts/
 ```
 GameManager.StartStage()
     → EnemySpawner.StartSpawning(player.Transform)
-    → 주기적으로 PoolManager.Spawn(enemyPrefab) → IEnemy.Initialize(target, stats)
+    → 주기적으로 PoolManager.Spawn(enemyPrefab) → IEnemy.Initialize(target)
 
 CatHeroPlayer
     → [Inject] _stat, _movement, _projectileLauncher, _visual (Root가 배분)
@@ -84,8 +104,12 @@ CameraFollow
     → target(플레이어 Root) 따라감. autoFindPlayer 옵션.
 
 EnemyBase
+    → [Inject] _stat, _visual (Root가 배분). EnemyStatSO에서 스탯.
     → Chase → Attack → GameEvents.OnPlayerHit.OnNext(damage)
     → TakeDamage → HP 0 시 DieSequence → PoolManager.Despawn
+
+Projectile
+    → NWPool 풀링. PoolManager.Spawn/Despawn 사용.
 ```
 
 ---
@@ -114,6 +138,16 @@ EnemyBase
 
 ## 6. 씬 구성
 
+### Scene Referral / SceneInstaller (매니저 의존성 주입)
+
+- **CatHeroPlayer**, **EnemySpawner**, **GameManager**: `[SceneReferral]` 부착
+- **[Game Manager]** GameObject에 **ObjectInstaller** + **SceneInstaller** 부착 (둘 다 필수)
+- SceneInstaller 선택 → Inspector 우클릭 → **Refresh Scene Registry** 실행
+- **GameManager**: `[SceneInject]`로 CatHeroPlayer, EnemySpawner 수신 (전역 Instance 없음)
+- 주입 실패 시 FindObjectOfType 폴백으로 동작 (경고 로그 출력)
+
+### 오브젝트 배치
+
 - **Player Root** (최상위):
   - **ObjectInstaller** (필수)
   - CatHeroPlayer, PlayerStat, ProjectileLauncher
@@ -121,5 +155,14 @@ EnemyBase
   - 자식 "Player Visual": PlayerVisual, SpriteRenderer
   - 자식 "Player Movement": PlayerMovement (moveTarget = Player Root)
   - ObjectInstaller → **Bake Dependencies** 실행
+- **Managers** (또는 Scene Root): ObjectInstaller, SceneInstaller, GameManager
 - **Main Camera** + CameraFollow
-- **EnemySpawner**, **PoolManager**
+- **EnemySpawner**: enemyPrefab (ObjectInstaller + EnemyStat + EnemyVisual 포함 프리팹)
+- **PoolManager**
+
+### 적 프리팹 (NightmareMonster)
+
+- **루트 [Enemy Installer]**: ObjectInstaller만 부착
+- **자식 Enemy Prefab**: NightmareMonster, SpriteRenderer, Enemy Visual, Enemy Stat
+- EnemyStat: EnemyStatSO 에셋 할당
+- ObjectInstaller → **Bake Dependencies** 실행 (루트에서)

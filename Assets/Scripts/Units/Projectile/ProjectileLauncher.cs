@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>투사체 발사.</summary>
 public class ProjectileLauncher : MonoBehaviour
 {
     [SerializeField] private GameObject projectilePrefab;
@@ -9,13 +8,14 @@ public class ProjectileLauncher : MonoBehaviour
 
     public void Fire(Vector3 origin, IEnemy target, float damage)
     {
-        if (projectilePrefab == null || target == null) return;
+        if (projectilePrefab == null || target == null || PoolManager.Instance == null) return;
 
         var mb = target as MonoBehaviour;
         if (mb == null) return;
 
-        var go = Instantiate(projectilePrefab, origin, Quaternion.identity);
-        if (go.TryGetComponent(out Projectile proj))
+        var go = PoolManager.Instance.Spawn(projectilePrefab, origin, Quaternion.identity);
+        var proj = go.GetComponent<Projectile>();
+        if (proj != null)
         {
             proj.Initialize(mb.transform, target, damage, defaultSpeed, hitRadius);
         }

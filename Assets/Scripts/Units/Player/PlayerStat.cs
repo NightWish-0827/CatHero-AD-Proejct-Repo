@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>Root 하위. PC Stat SO를 참조하여 스탯 제공.</summary>
 public class PlayerStat : MonoBehaviour
 {
     [SerializeField] private PlayerStatSO statSO;

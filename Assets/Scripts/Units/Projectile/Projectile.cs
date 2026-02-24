@@ -1,7 +1,6 @@
 using UnityEngine;
 
-/// <summary>대상 적을 향해 비행 후 타격.</summary>
-public class Projectile : MonoBehaviour
+public class Projectile : MonoBehaviour, IPoolable
 {
     private Transform _target;
     private IEnemy _enemy;
@@ -18,11 +17,15 @@ public class Projectile : MonoBehaviour
         _hitRadiusSqr = hitRadius * hitRadius;
     }
 
+    public void OnSpawn() { }
+
+    public void OnDespawn() { }
+
     private void Update()
     {
         if (_target == null || _enemy == null || !_enemy.IsAlive)
         {
-            Destroy(gameObject);
+            ReturnToPool();
             return;
         }
 
@@ -33,6 +36,18 @@ public class Projectile : MonoBehaviour
         if (sqrDist <= _hitRadiusSqr)
         {
             _enemy.TakeDamage(_damage);
+            ReturnToPool();
+        }
+    }
+
+    private void ReturnToPool()
+    {
+        if (PoolManager.Instance != null)
+        {
+            PoolManager.Instance.Despawn(gameObject);
+        }
+        else
+        {
             Destroy(gameObject);
         }
     }

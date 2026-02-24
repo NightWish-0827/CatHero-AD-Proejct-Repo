@@ -3,7 +3,8 @@ using R3;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using System;
-/// <summary>캣 히어로: 고양이/주인. Root가 배분한 의존성만 [Inject]로 사용.</summary>
+
+[SceneReferral]
 public class CatHeroPlayer : MonoBehaviour
 {
     [Inject, SerializeField] private PlayerStat _stat;

@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(SpriteRenderer))]
-public class PlayerVisual : MonoBehaviour
+public class EnemyVisual : MonoBehaviour
 {
     [SerializeField] private SpriteRenderer spriteRenderer;
 

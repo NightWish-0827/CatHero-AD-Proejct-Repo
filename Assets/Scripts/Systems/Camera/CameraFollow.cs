@@ -1,6 +1,5 @@
 using UnityEngine;
 
-/// <summary>타겟(플레이어)을 따라가는 카메라.</summary>
 [RequireComponent(typeof(Camera))]
 public class CameraFollow : MonoBehaviour
 {

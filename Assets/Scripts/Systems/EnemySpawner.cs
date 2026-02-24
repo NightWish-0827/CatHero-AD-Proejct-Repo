@@ -2,20 +2,12 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
-/// <summary>캣 히어로: 웨이브별 적 스폰. PoolManager 사용.</summary>
+[SceneReferral]
 public class EnemySpawner : MonoBehaviour
 {
     [Header("Spawn")]
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private Transform spawnPoint;
-    [SerializeField] private EnemyStatDB defaultStats = new EnemyStatDB
-    {
-        maxHealth = 10f,
-        moveSpeed = 2f,
-        attackDamage = 5f,
-        attackRange = 1.5f,
-        attackCooldown = 1.5f
-    };
 
     [Header("Wave")]
     [SerializeField] private float spawnInterval = 2f;
@@ -77,9 +69,10 @@ public class EnemySpawner : MonoBehaviour
         Vector3 pos = spawnPoint != null ? spawnPoint.position : transform.position;
         var instance = PoolManager.Instance.Spawn(enemyPrefab, pos, Quaternion.identity);
 
-        if (instance.TryGetComponent(out IEnemy enemy))
+        var enemy = instance.GetComponentInChildren<IEnemy>();
+        if (enemy != null)
         {
-            enemy.Initialize(playerTarget, defaultStats);
+            enemy.Initialize(playerTarget);
         }
     }
 

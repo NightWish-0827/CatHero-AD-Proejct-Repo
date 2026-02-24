@@ -60,12 +60,9 @@ public class ObjectInstallerEditor : Editor
         {
             if (mb == null) continue;
 
-            var fields = mb.GetType()
-                .GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
             var so = new SerializedObject(mb);
 
-            foreach (var field in fields)
+            foreach (var field in TypeDataCache.GetAllInstanceFields(mb.GetType()))
             {
                 if (System.Attribute.IsDefined(field, typeof(InjectAttribute)))
                 {

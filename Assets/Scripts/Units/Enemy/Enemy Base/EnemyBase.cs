@@ -4,12 +4,11 @@ using DG.Tweening;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
-/// <summary>캣 히어로 스타일 적: 악몽이 고양이/주인을 향해 접근 → 공격 시 데미지.</summary>
 public abstract class EnemyBase : MonoBehaviour, IEnemy
 {
-    protected abstract SpriteRenderer HitEffectSprite { get; }
+    [Inject, SerializeField] private EnemyStat _stat;
+    [Inject, SerializeField] private EnemyVisual _visual;
 
-    protected EnemyStatDB stats;
     protected float currentHealth;
     protected EnemyState currentState;
     protected Transform myTransform;
@@ -18,17 +17,19 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     protected CompositeDisposable poolDisposables;
     protected CancellationTokenSource poolCts;
 
-  
+    private SpriteRenderer HitEffectSprite => _visual != null ? _visual.SpriteRenderer : null;
+
     public EnemyState CurrentState => currentState;
     public bool IsAlive => currentState != EnemyState.Dead;
     public Transform Target { get => targetTransform; set => targetTransform = value; }
-    public EnemyStatDB Stats => stats;
+    public EnemyStat Stats => _stat;
 
     public virtual void OnSpawn()
     {
         poolDisposables = new CompositeDisposable();
         poolCts = new CancellationTokenSource();
 
+        myTransform.localPosition = Vector3.zero;
         myTransform.DOKill();
         if (HitEffectSprite != null)
         {
@@ -54,11 +55,10 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         poolCts = null;
     }
 
-    public virtual void Initialize(Transform target, EnemyStatDB statDB)
+    public virtual void Initialize(Transform target)
     {
         targetTransform = target;
-        stats = statDB;
-        currentHealth = stats.maxHealth;
+        currentHealth = _stat != null ? _stat.MaxHealth : 10f;
 
         EnemyRegistry.Register(this);
         SpawnSequenceAsync(poolCts.Token).Forget();
@@ -100,13 +100,13 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     {
         while (currentState != EnemyState.Dead && !token.IsCancellationRequested)
         {
-            if (targetTransform == null) break;
+            if (targetTransform == null || _stat == null) break;
 
             if (currentState == EnemyState.Chasing)
             {
                 float sqrDistance = (targetTransform.position - myTransform.position).sqrMagnitude;
 
-                if (sqrDistance <= stats.attackRange * stats.attackRange)
+                if (sqrDistance <= _stat.AttackRange * _stat.AttackRange)
                 {
                     currentState = EnemyState.Attacking;
                     await AttackSequenceAsync(token);
@@ -116,7 +116,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
                     myTransform.position = Vector3.MoveTowards(
                         myTransform.position,
                         targetTransform.position,
-                        stats.moveSpeed * Time.deltaTime);
+                        _stat.MoveSpeed * Time.deltaTime);
 
                     await UniTask.Yield(PlayerLoopTiming.Update, token);
                 }
@@ -128,28 +128,25 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         }
     }
 
-    /// <summary>캣 히어로: 적이 고양이/주인에게 도달 시 선딜 → 돌진 공격 → 플레이어 데미지 → 쿨타임.</summary>
     protected virtual async UniTask AttackSequenceAsync(CancellationToken token)
     {
         Vector3 directionToTarget = (targetTransform.position - myTransform.position).normalized;
 
-        // 1. 선딜 (살짝 뒤로 빠짐)
         await DOTweenUniTaskUtil.AwaitTweenAsync(
             myTransform.DOMove(myTransform.position - directionToTarget * 0.3f, 0.2f).SetEase(Ease.OutQuad),
             token);
 
-        // 2. 돌진 타격 → 플레이어 데미지 (캣 히어로: 악몽이 고양이/주인을 공격)
         await DOTweenUniTaskUtil.AwaitTweenAsync(
             myTransform.DOMove(myTransform.position + directionToTarget * 0.8f, 0.1f).SetEase(Ease.InFlash),
             token);
 
-        if (currentState != EnemyState.Dead)
+        if (currentState != EnemyState.Dead && _stat != null)
         {
-            GameEvents.OnPlayerHit.OnNext(stats.attackDamage);
+            GameEvents.OnPlayerHit.OnNext(_stat.AttackDamage);
         }
 
-        // 3. 공격 쿨타임
-        await UniTask.Delay(System.TimeSpan.FromSeconds(stats.attackCooldown), cancellationToken: token);
+        float cooldown = _stat != null ? _stat.AttackCooldown : 1.5f;
+        await UniTask.Delay(System.TimeSpan.FromSeconds(cooldown), cancellationToken: token);
 
         if (currentState != EnemyState.Dead)
         {
@@ -171,7 +168,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
         await DOTweenUniTaskUtil.AwaitTweenAsync(seq, token);
 
-        PoolManager.Instance.Despawn(gameObject);
+        PoolManager.Instance.Despawn(transform.root.gameObject);
     }
 
     protected virtual void Awake()
@@ -179,4 +176,3 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         myTransform = transform;
     }
 }
-// EnemyBase

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
 
 /// <summary>
 /// 리플렉션 비용을 줄이기 위해
@@ -8,6 +9,26 @@ using System.Reflection;
 /// </summary>
 public static class TypeDataCache
 {
+    /// <summary>
+    /// 상속 체인을 순회하여 해당 타입 및 베이스 타입의 모든 인스턴스 필드를 반환합니다.
+    /// C# GetFields는 상속된 private 필드를 반환하지 않으므로, 베이스 타입을 수동 순회해야 합니다.
+    /// - type == null 시 빈 시퀀스 반환 (방어 코드)
+    /// - MonoBehaviour 이상의 Unity 엔진 타입은 제외 (불필요한 리플렉션 및 엔진 내부 필드 노출 방지)
+    /// </summary>
+    public static IEnumerable<FieldInfo> GetAllInstanceFields(Type type)
+    {
+        if (type == null) yield break;
+
+        var current = type;
+        while (current != null && current != typeof(object) && current != typeof(MonoBehaviour))
+        {
+            var fields = current.GetFields(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+            foreach (var f in fields)
+                yield return f;
+            current = current.BaseType;
+        }
+    }
     private static readonly Dictionary<Type, List<FieldInfo>> _globalInjectCache
         = new Dictionary<Type, List<FieldInfo>>();
 
@@ -27,9 +48,7 @@ public static class TypeDataCache
         }
 
         var result = new List<FieldInfo>();
-        var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-        foreach (var field in fields)
+        foreach (var field in GetAllInstanceFields(type))
         {
             if (Attribute.IsDefined(field, typeof(GlobalInjectAttribute)))
             {
@@ -54,9 +73,7 @@ public static class TypeDataCache
         }
 
         var result = new List<FieldInfo>();
-        var fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-        foreach (var field in fields)
+        foreach (var field in GetAllInstanceFields(type))
         {
             if (Attribute.IsDefined(field, typeof(SceneInjectAttribute)))
             {

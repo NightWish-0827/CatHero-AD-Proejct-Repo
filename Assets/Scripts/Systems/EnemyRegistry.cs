@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>활성 적 등록. 고양이 공격 타겟 탐색용.</summary>
 public static class EnemyRegistry
 {
     private static readonly List<IEnemy> ActiveEnemies = new List<IEnemy>();
@@ -21,7 +20,6 @@ public static class EnemyRegistry
         ActiveEnemies.Remove(enemy);
     }
 
-    /// <summary>가장 가까운 살아있는 적. 없으면 null.</summary>
     public static IEnemy GetNearest(Vector3 position)
     {
         IEnemy nearest = null;
