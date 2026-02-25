@@ -2,11 +2,9 @@ using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("Movement")]
     [SerializeField] private float moveSpeed = 3f;
     [SerializeField] private Vector3 moveDirection = Vector3.right;
 
-    [Header("Target")]
     [SerializeField] private Transform moveTarget;
 
     private bool _isActive = true;

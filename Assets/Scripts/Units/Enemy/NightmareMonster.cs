@@ -6,12 +6,10 @@ using System.Threading;
 
 public class NightmareMonster : EnemyBase
 {
-    [Header("Flight")]
     [SerializeField, Min(0f)] private float flightHeight = 1.6f;
     [SerializeField, Min(0f)] private float bobAmplitude = 0.25f;
     [SerializeField, Min(0f)] private float bobFrequency = 2.2f;
 
-    [Header("Attack")]
     [SerializeField, Min(0f)] private float attackWindUp = 0.15f;
 
     protected override async UniTaskVoid BehaviorLoopAsync(CancellationToken token)

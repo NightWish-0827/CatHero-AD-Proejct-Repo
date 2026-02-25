@@ -7,28 +7,16 @@ using Random = UnityEngine.Random;
 [SceneReferral]
 public class EnemySpawner : MonoBehaviour
 {
-    [Header("Spawn")]
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private float spawnDistanceAhead = 8f;
 
-    [Header("Spawn Height")]
     [SerializeField] private float groundY = 0f;
 
-    [Header("Spawn Table (권장)")]
     [SerializeField] private EnemySpawnTableSO spawnTable;
-
-    [Header("Legacy Spawn Mode (spawnTable 없을 때만 사용)")]
-    [SerializeField] private EnemySpawnMode spawnMode = EnemySpawnMode.Single;
-
-    [Header("Cluster Spawn")]
-    [SerializeField, Min(2)] private int clusterCount = 5;
     [SerializeField, Min(0f)] private float clusterSpacingX = 0.8f;
-    [SerializeField, Min(0f)] private float clusterVerticalJitter = 0.35f;
 
-    [Header("Wave")]
     [SerializeField] private float spawnInterval = 2f;
     [SerializeField] private int maxEnemiesPerWave = 5;
-    [SerializeField] private float waveCooldown = 3f;
 
     private Transform playerTarget;
     private CancellationTokenSource cts;
@@ -87,6 +75,9 @@ public class EnemySpawner : MonoBehaviour
     {
         if (playerTarget == null || PoolManager.Instance == null) return;
 
+        bool hasTable = spawnTable != null && spawnTable.Entries != null && spawnTable.Entries.Count > 0;
+        if (!hasTable && enemyPrefab == null) return;
+
         int count = Mathf.Max(1, maxEnemiesPerWave);
         Vector3 basePos = GetBaseSpawnPos();
         float spacingX = Mathf.Max(0f, clusterSpacingX);
@@ -94,7 +85,8 @@ public class EnemySpawner : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             Vector3 pos = basePos + new Vector3(i * spacingX, 0f, 0f);
-            SpawnEnemyAt(pos);
+            if (hasTable) SpawnFromTable(pos);
+            else SpawnSingle(enemyPrefab, pos);
         }
     }
 
@@ -108,36 +100,6 @@ public class EnemySpawner : MonoBehaviour
             playerTarget.position.x + spawnDistanceAhead,
             groundY,
             playerTarget.position.z);
-    }
-
-    private void SpawnEnemyAt(Vector3 pos)
-    {
-        if (playerTarget == null || PoolManager.Instance == null) return;
-
-        if (spawnTable != null && spawnTable.Entries != null && spawnTable.Entries.Count > 0)
-        {
-            SpawnFromTable(pos);
-            return;
-        }
-
-        // 폴백: 기존 단일/군집 선택 방식
-        if (enemyPrefab == null) return;
-        switch (spawnMode)
-        {
-            case EnemySpawnMode.Cluster:
-                SpawnCluster(pos);
-                break;
-            default:
-                SpawnSingle(pos);
-                break;
-        }
-    }
-
-    private void SpawnSingle(Vector3 pos)
-    {
-        var instance = PoolManager.Instance.Spawn(enemyPrefab, pos, Quaternion.identity);
-        var enemy = instance.GetComponentInChildren<IEnemy>();
-        if (enemy != null) enemy.Initialize(playerTarget);
     }
 
     private void SpawnSingle(GameObject prefab, Vector3 pos)
@@ -169,19 +131,6 @@ public class EnemySpawner : MonoBehaviour
         {
             // 폴백: 기존 프리팹(지상)을 groundY에 고정
             enemyBase.ConfigureVerticalLock(true, groundY);
-        }
-    }
-
-    private void SpawnCluster(Vector3 basePos)
-    {
-        int count = Mathf.Max(2, clusterCount);
-
-        for (int i = 0; i < count; i++)
-        {
-            // 플레이어 전방(+X)에서 무리로 등장. i가 커질수록 더 "전방"에 배치.
-            float x = basePos.x + (i * clusterSpacingX);
-            float y = basePos.y + Random.Range(-clusterVerticalJitter, clusterVerticalJitter);
-            SpawnSingle(enemyPrefab, new Vector3(x, y, basePos.z));
         }
     }
 
@@ -269,10 +218,4 @@ public class EnemySpawner : MonoBehaviour
     {
         StopSpawning();
     }
-}
-
-public enum EnemySpawnMode
-{
-    Single,
-    Cluster
 }
