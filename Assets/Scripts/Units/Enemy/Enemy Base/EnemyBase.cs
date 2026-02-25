@@ -94,8 +94,8 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         currentHealth -= damage;
         RefreshHealthBar();
 
-        _visual?.PlayHitFlash(0.1f);
-        _visual?.PlayHitPunchScale(Vector3.one * -0.2f, 0.15f, 10, 1f);
+        _visual?.PlayHitFlash();
+        _visual?.PlayHitPunchScale();
 
         if (currentHealth <= 0)
         {
@@ -107,7 +107,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     {
         if (_visual != null)
         {
-            await DOTweenUniTaskUtil.AwaitTweenAsync(_visual.PlaySpawnScale(0.4f), token);
+            await DOTweenUniTaskUtil.AwaitTweenAsync(_visual.PlaySpawnScale(), token);
         }
 
         currentState = EnemyState.Chasing;
@@ -209,7 +209,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         GameEvents.OnEnemyKilled.OnNext(this);
         if (_healthBar != null) _healthBar.SetVisible(false);
 
-        var seq = _visual != null ? _visual.CreateDieSequence(0.2f) : DOTween.Sequence();
+        var seq = _visual != null ? _visual.CreateDieSequence() : DOTween.Sequence();
 
         await DOTweenUniTaskUtil.AwaitTweenAsync(seq, token);
 
