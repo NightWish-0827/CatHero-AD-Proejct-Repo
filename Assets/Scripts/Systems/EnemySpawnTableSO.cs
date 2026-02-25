@@ -42,6 +42,11 @@ public class EnemySpawnEntry
     [Min(0f)]
     public float singleVerticalJitter = 0f;
 
+    [Min(1)]
+    public int groupCount = 1;
+
+    [SerializeField] public List<Vector2> groupOffsets = new List<Vector2>();
+
     public Vector2Int clusterCount = new Vector2Int(3, 6);
 
     [Min(0f)]

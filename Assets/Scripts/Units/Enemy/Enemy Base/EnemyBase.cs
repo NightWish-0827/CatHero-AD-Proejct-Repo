@@ -22,6 +22,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
     private bool _lockY;
     private float _lockedY;
+    private Vector3 _spawnBaseScale = Vector3.one;
 
     public EnemyState CurrentState => currentState;
     public bool IsAlive => currentState != EnemyState.Dead;
@@ -106,7 +107,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         myTransform.localScale = Vector3.zero;
 
         await DOTweenUniTaskUtil.AwaitTweenAsync(
-            myTransform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack),
+            myTransform.DOScale(_spawnBaseScale, 0.4f).SetEase(Ease.OutBack),
             token);
 
         currentState = EnemyState.Chasing;
@@ -222,5 +223,6 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     protected virtual void Awake()
     {
         myTransform = transform;
+        _spawnBaseScale = myTransform.localScale;
     }
 }

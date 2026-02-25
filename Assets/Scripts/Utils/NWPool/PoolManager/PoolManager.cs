@@ -22,7 +22,7 @@ public class PoolManager : MonoBehaviour
         {
             poolDictionary[prefab] = new ObjectPool<GameObject>(
                 createFunc: () => Instantiate(prefab),
-                actionOnGet: (obj) => OnTakeFromPool(obj),
+                actionOnGet: (obj) => OnTakeFromPool(obj, prefab),
                 actionOnRelease: (obj) => OnReturnedToPool(obj),
                 actionOnDestroy: (obj) => Destroy(obj),
                 collectionCheck: true, 
@@ -54,8 +54,12 @@ public class PoolManager : MonoBehaviour
     }
 
     // --- Callback ---
-    private void OnTakeFromPool(GameObject obj)
+    private void OnTakeFromPool(GameObject obj, GameObject prefab)
     {
+        if (prefab != null)
+        {
+            obj.transform.localScale = prefab.transform.localScale;
+        }
         obj.SetActive(true);
 
         var poolable = obj.GetComponentInChildren<IPoolable>();

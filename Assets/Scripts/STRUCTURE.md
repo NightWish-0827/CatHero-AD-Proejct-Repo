@@ -159,8 +159,14 @@ Projectile
 - **Managers** (또는 Scene Root): ObjectInstaller, SceneInstaller, GameManager
 - **Main Camera** + CameraFollow
 - **EnemySpawner**: enemyPrefab, spawnDistanceAhead (플레이어 우측 일정 거리에서 스폰, 좌→우 플로우)
-  - spawnMode = Single / Cluster (군집형은 Cluster)
-  - Cluster 옵션: clusterCount / clusterSpacingX / clusterVerticalJitter
+  - `EnemySpawnTableSO` 기반 스폰(권장):
+    - `Entries`의 **엔트리 1개 = 분기 1개(한 전투 묶음)** 로 간주
+    - 플레이어가 해당 분기를 **클리어(적 0)** 하면, `spawnInterval` 후 다음 엔트리(순차)가 스폰됨
+    - 단일 등장도 **군집 인원 1**로 통합
+    - 군집 포지션 우선순위: `groupOffsets(명시)` → `groupCount(자동 배치)` → 레거시(`pattern/clusterCount` 등)
+    - 자동 배치 옵션(레거시 호환 포함): `clusterSpacingX`, `singleVerticalJitter`, `clusterVerticalJitter`
+  - 테이블 미사용 폴백:
+    - 웨이브마다 `maxEnemiesPerWave` 마리(간격은 `clusterSpacingX`) 생성
 - **PoolManager**
 
 ### 적 프리팹 (NightmareMonster)
