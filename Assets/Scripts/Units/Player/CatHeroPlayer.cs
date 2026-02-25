@@ -107,6 +107,7 @@ public class CatHeroPlayer : MonoBehaviour
             if (target != null && _projectileLauncher != null)
             {
                 Vector3 origin = _visual != null ? _visual.transform.position : transform.position;
+                _visual?.PlayAttack();
                 _projectileLauncher.Fire(origin, target, _stat.BaseAttackDamage);
             }
 

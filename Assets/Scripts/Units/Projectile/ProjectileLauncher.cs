@@ -4,6 +4,8 @@ public class ProjectileLauncher : MonoBehaviour
 {
     [SerializeField] private GameObject projectilePrefab;
     [SerializeField] private float defaultSpeed = 8f;
+    [SerializeField] private bool useFlightTime = true;
+    [SerializeField] private float defaultFlightTime = 0.25f;
     [SerializeField] private float hitRadius = 0.3f;
 
     public void Fire(Vector3 origin, IEnemy target, float damage)
@@ -17,7 +19,14 @@ public class ProjectileLauncher : MonoBehaviour
         var proj = go.GetComponent<Projectile>();
         if (proj != null)
         {
-            proj.Initialize(mb.transform, target, damage, defaultSpeed, hitRadius);
+            if (useFlightTime)
+            {
+                proj.Initialize(mb.transform, target, damage, defaultSpeed, hitRadius, defaultFlightTime);
+            }
+            else
+            {
+                proj.Initialize(mb.transform, target, damage, defaultSpeed, hitRadius);
+            }
         }
     }
 }
