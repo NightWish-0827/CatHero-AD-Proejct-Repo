@@ -79,10 +79,11 @@ public class Roulette : MonoBehaviour
         if (pointerTransform != null && pointerKick > 0f)
         {
             float targetZ = pointerRestLocalZ - pointerKick;
-            float current = Mathf.SmoothDampAngle(pointerTransform.localEulerAngles.z, targetZ, ref pointerKickVel, pointerSmoothTime, pointerMaxSpeed, Time.deltaTime);
+            float dt = Time.unscaledDeltaTime;
+            float current = Mathf.SmoothDampAngle(pointerTransform.localEulerAngles.z, targetZ, ref pointerKickVel, pointerSmoothTime, pointerMaxSpeed, dt);
             pointerTransform.localRotation = Quaternion.Euler(0f, 0f, current);
             
-            pointerKick = Mathf.MoveTowards(pointerKick, 0f, Time.deltaTime * pointerKickReturnSpeed);
+            pointerKick = Mathf.MoveTowards(pointerKick, 0f, dt * pointerKickReturnSpeed);
         }
     }
 
@@ -235,6 +236,7 @@ public class Roulette : MonoBehaviour
         try
         {
             Sequence anticSeq = DOTween.Sequence();
+            anticSeq.SetUpdate(true);
             float anticAngle = startZ + anticipationRotateOffsetZ;
 
             anticSeq.Append(spinningRoulette.DOScale(initialRouletteScale * anticipationScaleMultiplier, anticipationDuration).SetEase(anticipationEase))
@@ -257,6 +259,7 @@ public class Roulette : MonoBehaviour
                     lastTickStep = tickStep;
                 }
             }, endZ, spinDuration);
+            spinTween.SetUpdate(true);
 
             if (!spinAllowOvershoot)
             {
@@ -273,7 +276,7 @@ public class Roulette : MonoBehaviour
 
             spinningRoulette.localScale = initialRouletteScale;
             
-            await AwaitForComplete(spinningRoulette.DOPunchScale(impactPunchScale, impactDuration, impactVibrato, impactElasticity));
+            await AwaitForComplete(spinningRoulette.DOPunchScale(impactPunchScale, impactDuration, impactVibrato, impactElasticity).SetUpdate(true));
         }
         finally
         {

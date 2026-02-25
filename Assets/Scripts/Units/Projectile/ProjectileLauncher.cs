@@ -21,6 +21,14 @@ public class ProjectileLauncher : MonoBehaviour
 
     [SerializeField] private OrbitingAmmoController orbitingAmmo;
 
+    public GameObject ProjectilePrefab => projectilePrefab;
+
+    public void SetProjectilePrefab(GameObject prefab)
+    {
+        projectilePrefab = prefab;
+        SyncOrbitingAmmoConfig();
+    }
+
     private void Awake()
     {
         orbitingAmmo ??= GetComponent<OrbitingAmmoController>();

@@ -15,4 +15,4 @@ MonoBehaviour:
   maxHealth: 100
   baseAttackDamage: 5
   attackInterval: 0.5
-  attackRange: 5
+  attackRange: 4
