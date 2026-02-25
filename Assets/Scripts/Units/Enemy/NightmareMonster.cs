@@ -12,6 +12,18 @@ public class NightmareMonster : EnemyBase
 
     [SerializeField, Min(0f)] private float attackWindUp = 0.15f;
 
+    public override void OnSpawn()
+    {
+        base.OnSpawn();
+        Visual?.EnableBob(bobAmplitude, bobFrequency);
+    }
+
+    public override void OnDespawn()
+    {
+        Visual?.DisableBob();
+        base.OnDespawn();
+    }
+
     protected override async UniTaskVoid BehaviorLoopAsync(CancellationToken token)
     {
         while (currentState != EnemyState.Dead && !token.IsCancellationRequested)
@@ -52,8 +64,9 @@ public class NightmareMonster : EnemyBase
         if (Stats == null) return;
 
         // 살짝 접근/상승 후 타격(원거리/근접 연출은 추후 교체 가능)
-        var tween = myTransform.DOPunchPosition(Vector3.up * 0.15f, attackWindUp, 8, 0.8f)
-            .SetEase(Ease.OutQuad);
+        var tween = Visual != null
+            ? Visual.PlayPunchPosition(Vector3.up * 0.15f, attackWindUp, 8, 0.8f, Ease.OutQuad)
+            : myTransform.DOPunchPosition(Vector3.up * 0.15f, attackWindUp, 8, 0.8f).SetEase(Ease.OutQuad);
         await DOTweenUniTaskUtil.AwaitTweenAsync(tween, token);
 
         if (currentState != EnemyState.Dead)

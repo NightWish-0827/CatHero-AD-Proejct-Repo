@@ -3,12 +3,13 @@ using R3;
 using DG.Tweening;
 using Cysharp.Threading.Tasks;
 using System.Threading;
-using System; 
+using System;
 
 public abstract class EnemyBase : MonoBehaviour, IEnemy
 {
     [Inject, SerializeField] private EnemyStat _stat;
     [Inject, SerializeField] private EnemyVisual _visual;
+    [Inject, SerializeField] private EnemyHealthBarSR _healthBar;
 
     protected float currentHealth;
     protected EnemyState currentState;
@@ -18,11 +19,12 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     protected CompositeDisposable poolDisposables;
     protected CancellationTokenSource poolCts;
 
-    private SpriteRenderer HitEffectSprite => _visual != null ? _visual.SpriteRenderer : null;
+    private float cachedMaxHealth = -1f;
 
     private bool _lockY;
     private float _lockedY;
-    private Vector3 _spawnBaseScale = Vector3.one;
+
+    protected EnemyVisual Visual => _visual;
 
     public EnemyState CurrentState => currentState;
     public bool IsAlive => currentState != EnemyState.Dead;
@@ -36,13 +38,12 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
         myTransform.localPosition = Vector3.zero;
         myTransform.DOKill();
-        if (HitEffectSprite != null)
-        {
-            HitEffectSprite.DOKill();
-            HitEffectSprite.color = Color.white;
-        }
+        _visual?.ResetForSpawn();
 
         currentState = EnemyState.Spawning;
+
+        EnsureHealthBarCached();
+        RefreshHealthBar();
     }
 
     public virtual void OnDespawn()
@@ -50,7 +51,7 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         EnemyRegistry.Unregister(this);
 
         myTransform.DOKill();
-        if (HitEffectSprite != null) HitEffectSprite.DOKill();
+        _visual?.KillTweens();
 
         poolDisposables?.Dispose();
         poolDisposables = null;
@@ -58,12 +59,16 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         poolCts?.Cancel();
         poolCts?.Dispose();
         poolCts = null;
+
+        if (_healthBar != null) _healthBar.SetVisible(false);
     }
 
     public virtual void Initialize(Transform target)
     {
         targetTransform = target;
         currentHealth = _stat != null ? _stat.MaxHealth : 10f;
+        cachedMaxHealth = _stat != null ? _stat.MaxHealth : 10f;
+        RefreshHealthBar();
 
         EnemyRegistry.Register(this);
         SpawnSequenceAsync(poolCts.Token).Forget();
@@ -87,14 +92,10 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         if (currentState == EnemyState.Dead) return;
 
         currentHealth -= damage;
+        RefreshHealthBar();
 
-        if (HitEffectSprite != null)
-        {
-            DOTween.To(() => HitEffectSprite.color, x => HitEffectSprite.color = x, Color.red, 0.1f)
-                .SetTarget(HitEffectSprite)
-                .OnComplete(() => HitEffectSprite.color = Color.white);
-        }
-        myTransform.DOPunchScale(Vector3.one * -0.2f, 0.15f, 10, 1);
+        _visual?.PlayHitFlash(0.1f);
+        _visual?.PlayHitPunchScale(Vector3.one * -0.2f, 0.15f, 10, 1f);
 
         if (currentHealth <= 0)
         {
@@ -104,11 +105,10 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
     protected virtual async UniTaskVoid SpawnSequenceAsync(CancellationToken token)
     {
-        myTransform.localScale = Vector3.zero;
-
-        await DOTweenUniTaskUtil.AwaitTweenAsync(
-            myTransform.DOScale(_spawnBaseScale, 0.4f).SetEase(Ease.OutBack),
-            token);
+        if (_visual != null)
+        {
+            await DOTweenUniTaskUtil.AwaitTweenAsync(_visual.PlaySpawnScale(0.4f), token);
+        }
 
         currentState = EnemyState.Chasing;
         BehaviorLoopAsync(token).Forget();
@@ -207,13 +207,9 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     {
         currentState = EnemyState.Dead;
         GameEvents.OnEnemyKilled.OnNext(this);
+        if (_healthBar != null) _healthBar.SetVisible(false);
 
-        var seq = DOTween.Sequence();
-        seq.Append(myTransform.DOScaleY(0f, 0.2f).SetEase(Ease.InBounce));
-        if (HitEffectSprite != null)
-        {
-            seq.Join(DOTween.ToAlpha(() => HitEffectSprite.color, x => HitEffectSprite.color = x, 0f, 0.2f).SetTarget(HitEffectSprite));
-        }
+        var seq = _visual != null ? _visual.CreateDieSequence(0.2f) : DOTween.Sequence();
 
         await DOTweenUniTaskUtil.AwaitTweenAsync(seq, token);
 
@@ -223,6 +219,30 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
     protected virtual void Awake()
     {
         myTransform = transform;
-        _spawnBaseScale = myTransform.localScale;
+
+        if (_stat == null) _stat = GetComponentInChildren<EnemyStat>(true);
+        if (_visual == null) _visual = GetComponentInChildren<EnemyVisual>(true);
+
+        EnsureHealthBarCached();
+    }
+
+    private void EnsureHealthBarCached()
+    {
+        if (_healthBar != null) return;
+        _healthBar = GetComponentInChildren<EnemyHealthBarSR>(true);
+    }
+
+    private void RefreshHealthBar()
+    {
+        EnsureHealthBarCached();
+        if (_healthBar == null) return;
+
+        float max = _stat != null ? _stat.MaxHealth : cachedMaxHealth;
+        if (max <= 0f) max = 10f;
+        cachedMaxHealth = max;
+
+        float progress = Mathf.Clamp01(currentHealth / max);
+        _healthBar.SetVisible(true);
+        _healthBar.SetProgress01(progress);
     }
 }
