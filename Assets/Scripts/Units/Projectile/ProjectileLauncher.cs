@@ -62,7 +62,13 @@ public class ProjectileLauncher : MonoBehaviour
 
         var go = PoolManager.Instance.Spawn(projectilePrefab, origin, Quaternion.identity);
         var proj = go.GetComponent<Projectile>();
-        if (proj == null) return;
+        if (proj == null)
+        {
+            // 프리팹 세팅 오류/교체(룰렛 등)로 Projectile 컴포넌트가 없을 수 있음.
+            // 이 경우 스폰된 오브젝트를 방치하면 이후 Despawn 중복/미등록 경고로 이어질 수 있어 즉시 반환합니다.
+            PoolManager.Instance.Despawn(go);
+            return;
+        }
 
         if (useFlightTime)
         {
@@ -80,5 +86,12 @@ public class ProjectileLauncher : MonoBehaviour
         if (orbitingAmmo == null) return;
         float flightTime = useFlightTime ? defaultFlightTime : 0f;
         orbitingAmmo.SetConfig(projectilePrefab, defaultSpeed, hitRadius, flightTime);
+
+        // OrbitingAmmo는 해당 모드일 때만 활성화(그 외에는 잔탄/오비팅 유지로 오해될 수 있음)
+        bool shouldEnableOrbiting = fireMode == FireMode.OrbitingAmmo && projectilePrefab != null;
+        if (orbitingAmmo.enabled != shouldEnableOrbiting)
+        {
+            orbitingAmmo.enabled = shouldEnableOrbiting; // disable 시 OnDisable -> DespawnAll()
+        }
     }
 }

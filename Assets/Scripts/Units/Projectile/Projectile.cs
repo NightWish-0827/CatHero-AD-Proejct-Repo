@@ -444,7 +444,9 @@ public class Projectile : MonoBehaviour, IPoolable
     {
         if (PoolManager.Instance != null)
         {
-            PoolManager.Instance.Despawn(gameObject);
+            // PoolManager는 Spawn된 "루트 인스턴스"를 키로 관리합니다.
+            // Projectile이 자식에 붙어있는 프리팹 구조에서는 자식을 Despawn하면 Not registered 경고가 발생할 수 있으므로 root로 반납합니다.
+            PoolManager.Instance.Despawn(transform.root.gameObject);
         }
         else
         {

@@ -8,6 +8,7 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
     [Header("Target")]
     [SerializeField] private ParallaxBackground targetParallaxBackground;
     [SerializeField] private bool includeInactiveChildren = true;
+    [SerializeField] private SpriteRenderer[] excludeSpriteRenderers;
 
     [Header("Dim Settings - Ready (Spin 가능 표시)")]
     [SerializeField, Range(0f, 1f)] private float readyDimMultiplier = 0.55f;
@@ -94,14 +95,48 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
             return;
         }
 
-        _renderers = targetParallaxBackground.GetComponentsInChildren<SpriteRenderer>(includeInactive: includeInactiveChildren);
-        _baseColors = new Color[_renderers.Length];
-
-        for (int i = 0; i < _renderers.Length; i++)
+        var all = targetParallaxBackground.GetComponentsInChildren<SpriteRenderer>(includeInactive: includeInactiveChildren);
+        if (all == null || all.Length == 0)
         {
-            var r = _renderers[i];
-            _baseColors[i] = r != null ? r.color : Color.white;
+            _renderers = System.Array.Empty<SpriteRenderer>();
+            _baseColors = System.Array.Empty<Color>();
+            return;
         }
+
+        // exclude 목록 필터링 (하프 시네마틱 등 외부에서 색을 직접 제어하는 SR을 디밍 시스템에서 제외)
+        int count = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            var r = all[i];
+            if (r == null) continue;
+            if (IsExcluded(r)) continue;
+            count++;
+        }
+
+        _renderers = new SpriteRenderer[count];
+        _baseColors = new Color[count];
+
+        int w = 0;
+        for (int i = 0; i < all.Length; i++)
+        {
+            var r = all[i];
+            if (r == null) continue;
+            if (IsExcluded(r)) continue;
+
+            _renderers[w] = r;
+            _baseColors[w] = r.color;
+            w++;
+        }
+    }
+
+    private bool IsExcluded(SpriteRenderer r)
+    {
+        if (excludeSpriteRenderers == null || excludeSpriteRenderers.Length == 0) return false;
+        for (int i = 0; i < excludeSpriteRenderers.Length; i++)
+        {
+            if (ReferenceEquals(excludeSpriteRenderers[i], r)) return true;
+        }
+        return false;
     }
 
     private void OnRouletteSpinReadyChanged(bool ready)
@@ -170,7 +205,15 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
             .SetEase(ease)
             .SetDelay(Mathf.Max(0f, delaySeconds))
             .SetUpdate(true) // timeScale=0에서도 동작
-            .SetTarget(this);
+            .SetTarget(this)
+            .OnComplete(() =>
+            {
+                // "완전 복구" 지점에서 이벤트를 쏴서, 후속 시퀀스가 정확히 이어지게 한다.
+                if (_phase == DimPhase.Clear && Mathf.Approximately(_currentMultiplier, 1f))
+                {
+                    GameEvents.OnBackgroundDimCleared.OnNext(R3.Unit.Default);
+                }
+            });
     }
 
     private void ApplyMultiplier(float multiplier)

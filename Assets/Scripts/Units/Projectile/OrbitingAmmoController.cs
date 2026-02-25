@@ -241,12 +241,12 @@ public class OrbitingAmmoController : MonoBehaviour
     private void OnProjectileFinished(int slotIndex, Projectile projectile)
     {
         if (projectile == null) return;
-        if (slotIndex < 0 || slotIndex >= _slots.Count) { PoolManager.Instance?.Despawn(projectile.gameObject); return; }
+        if (slotIndex < 0 || slotIndex >= _slots.Count) { PoolManager.Instance?.Despawn(projectile.transform.root.gameObject); return; }
 
         Transform anchor = anchorOverride != null ? anchorOverride : transform;
         if (anchor == null)
         {
-            PoolManager.Instance?.Despawn(projectile.gameObject);
+            PoolManager.Instance?.Despawn(projectile.transform.root.gameObject);
             return;
         }
 
@@ -269,7 +269,7 @@ public class OrbitingAmmoController : MonoBehaviour
             var s = _slots[i];
             if (s?.Projectile != null)
             {
-                PoolManager.Instance.Despawn(s.Projectile.gameObject);
+                PoolManager.Instance.Despawn(s.Projectile.transform.root.gameObject);
             }
         }
     }

@@ -4,6 +4,7 @@ using Cysharp.Threading.Tasks;
 using System.Threading;
 using System;
 
+
 [SceneReferral]
 public class CatHeroPlayer : MonoBehaviour
 {
@@ -18,6 +19,10 @@ public class CatHeroPlayer : MonoBehaviour
     [SerializeField] private int firstEncounterRouletteFixedIndex = 0;
     [SerializeField] private int firstEncounterRouletteAngleRoll = 0;
 
+    [Header("Second Cluster Roulette (Weapon Re-Unlock)")]
+    [SerializeField] private int secondClusterRouletteFixedIndex = 1;
+    [SerializeField] private int secondClusterRouletteAngleRoll = 0;
+
     private float _currentHealth;
     private CompositeDisposable _disposables;
     private CancellationTokenSource _attackCts;
@@ -28,6 +33,11 @@ public class CatHeroPlayer : MonoBehaviour
     private float _roulettePrevTimeScale = 1f;
     private bool _roulettePausedTimeScale;
     private GameObject _lockedProjectilePrefab;
+
+    private bool _weaponUnlocked;
+    private int _weaponUnlockedWaveIndex = -1;
+    private int _currentWaveIndex;
+    private bool _secondClusterRouletteDone;
 
     public float CurrentHealth => _currentHealth;
     public float MaxHealth => _stat != null ? _stat.MaxHealth : 100f;
@@ -43,6 +53,10 @@ public class CatHeroPlayer : MonoBehaviour
 
         GameEvents.OnPlayerHit.Subscribe(OnHit).AddTo(_disposables);
         GameEvents.OnPlayerDeath.Subscribe(_ => StopAll()).AddTo(_disposables);
+        GameEvents.OnWaveStarted.Subscribe(w => _currentWaveIndex = w).AddTo(_disposables);
+        GameEvents.OnWaveCleared.Subscribe(OnWaveCleared).AddTo(_disposables);
+        GameEvents.OnSecondDrawHalfCinematicImpact.Subscribe(_ => OnSecondDrawHalfCinematicImpact()).AddTo(_disposables);
+        GameEvents.OnSecondDrawHalfCinematicFinished.Subscribe(_ => OnSecondDrawHalfCinematicFinished()).AddTo(_disposables);
 
         LockWeaponUntilFirstEncounterRoulette();
         AutoAttackLoopAsync(_attackCts.Token).Forget();
@@ -83,7 +97,17 @@ public class CatHeroPlayer : MonoBehaviour
 
             if (!_firstEncounterRouletteDone && !_isFirstEncounterRoulettePlaying)
             {
-                StartFirstEncounterRouletteAsync().Forget();
+                StartEncounterRouletteAsync(firstEncounterRouletteFixedIndex, firstEncounterRouletteAngleRoll, markFirstDone: true).Forget();
+            }
+            else if (_firstEncounterRouletteDone
+                     && !_secondClusterRouletteDone
+                     && !_isFirstEncounterRoulettePlaying
+                     && !_weaponUnlocked
+                     && _weaponUnlockedWaveIndex > 0
+                     && _currentWaveIndex == (_weaponUnlockedWaveIndex + 1))
+            {
+                // 1번 무기 획득 후 1개 클러스터(웨이브) 클리어 시 무기 반납 → 바로 다음 클러스터에서 재획득(룰렛) 트리거
+                StartEncounterRouletteAsync(secondClusterRouletteFixedIndex, secondClusterRouletteAngleRoll, markFirstDone: false).Forget();
             }
         }
         else
@@ -122,12 +146,23 @@ public class CatHeroPlayer : MonoBehaviour
         _projectileLauncher.SetProjectilePrefab(null);
     }
 
+    private void LockWeaponAfterClusterClear()
+    {
+        if (_projectileLauncher == null) return;
+        if (_lockedProjectilePrefab == null) return;
+        _projectileLauncher.SetProjectilePrefab(null);
+        _weaponUnlocked = false;
+    }
+
     private void UnlockWeapon()
     {
         if (_projectileLauncher == null) return;
         if (_lockedProjectilePrefab == null) return;
         _projectileLauncher.SetProjectilePrefab(_lockedProjectilePrefab);
         GameEvents.OnPlayerWeaponUnlocked.OnNext(R3.Unit.Default);
+
+        _weaponUnlocked = true;
+        if (_currentWaveIndex > 0) _weaponUnlockedWaveIndex = _currentWaveIndex;
     }
 
     private void RestoreTimeScaleIfPausedForRoulette()
@@ -137,9 +172,20 @@ public class CatHeroPlayer : MonoBehaviour
         Time.timeScale = _roulettePrevTimeScale;
     }
 
-    private async UniTaskVoid StartFirstEncounterRouletteAsync()
+    private void OnWaveCleared(int waveIndex)
+    {
+        // 무기가 활성화된 상태에서 "해당 클러스터"를 클리어하면 바로 반납(잠금)
+        if (_weaponUnlocked && waveIndex == _weaponUnlockedWaveIndex)
+        {
+            LockWeaponAfterClusterClear();
+        }
+    }
+
+    private async UniTaskVoid StartEncounterRouletteAsync(int fixedIndex, int angleRoll, bool markFirstDone)
     {
         _isFirstEncounterRoulettePlaying = true;
+        bool isSecondDraw = !markFirstDone;
+        bool spinCompleted = false;
 
         Roulette roulette = firstEncounterRoulette;
         if (roulette == null)
@@ -159,6 +205,8 @@ public class CatHeroPlayer : MonoBehaviour
         GameObject rouletteGo = roulette.gameObject;
         bool prevActive = rouletteGo.activeSelf;
 
+        RouletteSpinPanel panelUsed = null;
+
         try
         {
             _roulettePrevTimeScale = Time.timeScale;
@@ -174,46 +222,70 @@ public class CatHeroPlayer : MonoBehaviour
             var panel = firstEncounterRouletteSpinPanel != null
                 ? firstEncounterRouletteSpinPanel
                 : rouletteGo.GetComponentInChildren<RouletteSpinPanel>(true);
+            panelUsed = panel;
 
             if (panel != null)
             {
                 panel.Show();
-                await panel.WaitForClickAndSpinFixedAsync(firstEncounterRouletteFixedIndex, firstEncounterRouletteAngleRoll);
+                await panel.WaitForClickAndSpinFixedAsync(fixedIndex, angleRoll);
             }
             else
             {
                 // 패널(버튼)이 없으면 안전 폴백(개발 중 데드락 방지)
                 Debug.LogWarning("[CatHeroPlayer] RouletteSpinPanel not found. Falling back to auto spin.");
-                await roulette.SpinFixedAsync(firstEncounterRouletteFixedIndex, firstEncounterRouletteAngleRoll);
+                await roulette.SpinFixedAsync(fixedIndex, angleRoll);
             }
 
-            _firstEncounterRouletteDone = true;
+            if (markFirstDone)
+            {
+                _firstEncounterRouletteDone = true;
+            }
+            else
+            {
+                _secondClusterRouletteDone = true;
+            }
 
             // 룰렛 종료 = 공격권/무기 획득
             UnlockWeapon();
+            spinCompleted = true;
         }
         finally
         {
-            var panel = firstEncounterRouletteSpinPanel != null
-                ? firstEncounterRouletteSpinPanel
-                : (rouletteGo != null ? rouletteGo.GetComponentInChildren<RouletteSpinPanel>(true) : null);
-            if (panel != null)
+            if (panelUsed != null)
             {
-                panel.Hide();
+                panelUsed.Hide();
             }
 
-            // 룰렛만 띄우는 연출이므로, 원래 비활성 오브젝트였다면 복구
-            if (!prevActive && rouletteGo != null)
-            {
-                rouletteGo.SetActive(false);
-            }
+            // 룰렛 루트 비활성화로 패널 페이드가 끊기는 것을 방지하기 위해,
+            // 여기서는 rouletteGo를 비활성화하지 않습니다.
 
-            RestoreTimeScaleIfPausedForRoulette();
-            _isFirstEncounterRoulettePlaying = false;
+            // 2번째 뽑기(하프 시네마틱)는 "디밍 복구 후에도 시간 정지 유지"가 필요하므로,
+            // 여기서는 spin이 실패했거나 1번째 뽑기일 때만 즉시 복구한다.
+            if (!isSecondDraw || !spinCompleted)
+            {
+                RestoreTimeScaleIfPausedForRoulette();
+                _isFirstEncounterRoulettePlaying = false;
+            }
         }
 
-        // NOTE: 재개 직후 수동 발사는 자동 공격 루프와 타이밍이 겹쳐
-        // "획득하자마자 2번 발사"처럼 보일 수 있어 제거합니다.
+        if (isSecondDraw && spinCompleted)
+        {
+            // 요구사항: 룰렛 결과 이후 디밍 복구는 되지만, 시간은 계속 정지 상태로 유지.
+            // 이후의 하프 시네마틱 연출(틴트/홀드/적 일괄 처치)은 별도 시스템(SecondDrawHalfCinematic)이 담당.
+            GameEvents.OnSecondDrawHalfCinematicRequested.OnNext(R3.Unit.Default);
+        }
+    }
+
+    private void OnSecondDrawHalfCinematicFinished()
+    {
+        // 하프 시네마틱이 끝나면 플레이어 제어 상태를 풀어준다.
+        _isFirstEncounterRoulettePlaying = false;
+    }
+
+    private void OnSecondDrawHalfCinematicImpact()
+    {
+        // 임팩트 시점에 timeScale을 재개한다.
+        RestoreTimeScaleIfPausedForRoulette();
     }
 
     private async UniTaskVoid AutoAttackLoopAsync(CancellationToken token)
@@ -221,6 +293,12 @@ public class CatHeroPlayer : MonoBehaviour
         while (IsAlive && !token.IsCancellationRequested)
         {
             if (_stat == null) { await UniTask.Yield(token); continue; }
+            if (_projectileLauncher == null || _projectileLauncher.ProjectilePrefab == null)
+            {
+                // 무기 반납(잠금) 상태에서는 공격 애니메이션/발사 모두 스킵
+                await UniTask.Yield(token);
+                continue;
+            }
 
             // 좌→우 진행: "앞줄(플레이어에 가장 가까운 전방)" 적부터 제거
             var target = EnemyRegistry.GetFrontMostInRange(transform.position, _stat.AttackRange, onlyAhead: true);

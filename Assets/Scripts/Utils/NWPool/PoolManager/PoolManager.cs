@@ -41,6 +41,13 @@ public class PoolManager : MonoBehaviour
 
     public void Despawn(GameObject instance)
     {
+        if (instance == null) return;
+
+        // 이미 풀로 돌아가 비활성화된 오브젝트를 중복 Despawn하는 경우가 있습니다.
+        // 이때는 경고/부작용 없이 조용히 무시합니다.
+        if (!instance.activeInHierarchy && !instanceToPrefabMap.ContainsKey(instance)) return;
+
+        // 1) direct match
         if (instanceToPrefabMap.TryGetValue(instance, out GameObject prefab))
         {
             poolDictionary[prefab].Release(instance);
@@ -48,8 +55,32 @@ public class PoolManager : MonoBehaviour
         }
         else
         {
+            // 2) child object passed? try root
+            var root = instance.transform != null ? instance.transform.root.gameObject : null;
+            if (root != null && root != instance && instanceToPrefabMap.TryGetValue(root, out prefab))
+            {
+                poolDictionary[prefab].Release(root);
+                instanceToPrefabMap.Remove(root);
+                return;
+            }
+
+            // 3) fallback: try find registered parent up the chain
+            Transform t = instance.transform;
+            while (t != null)
+            {
+                var go = t.gameObject;
+                if (instanceToPrefabMap.TryGetValue(go, out prefab))
+                {
+                    poolDictionary[prefab].Release(go);
+                    instanceToPrefabMap.Remove(go);
+                    return;
+                }
+                t = t.parent;
+            }
+
+            // last resort: avoid hard break in gameplay. disable and warn once.
             Debug.LogWarning($"[PoolManager] Not registered prefab - {instance.name}");
-            Destroy(instance);
+            instance.SetActive(false);
         }
     }
 
@@ -66,6 +97,13 @@ public class PoolManager : MonoBehaviour
         if (poolable != null)
         {
             poolable.OnSpawn();
+
+            // Allow despawning by child(poolable) object too.
+            var mb = poolable as MonoBehaviour;
+            if (mb != null && mb.gameObject != obj)
+            {
+                instanceToPrefabMap[mb.gameObject] = prefab;
+            }
         }
     }
 
@@ -75,6 +113,12 @@ public class PoolManager : MonoBehaviour
         if (poolable != null)
         {
             poolable.OnDespawn();
+
+            var mb = poolable as MonoBehaviour;
+            if (mb != null && mb.gameObject != obj)
+            {
+                instanceToPrefabMap.Remove(mb.gameObject);
+            }
         }
         obj.SetActive(false);
     }

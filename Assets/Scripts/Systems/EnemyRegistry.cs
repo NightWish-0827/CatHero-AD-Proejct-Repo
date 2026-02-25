@@ -5,11 +5,22 @@ public static class EnemyRegistry
 {
     private static readonly List<IEnemy> ActiveEnemies = new List<IEnemy>();
 
-    public static IReadOnlyList<IEnemy> Enemies => ActiveEnemies;
+    public static IReadOnlyList<IEnemy> Enemies
+    {
+        get
+        {
+            Cleanup();
+            return ActiveEnemies;
+        }
+    }
 
     public static void Register(IEnemy enemy)
     {
-        if (enemy != null && !ActiveEnemies.Contains(enemy))
+        if (enemy == null) return;
+        if ((enemy as UnityEngine.Object) == null) return; // destroyed/unloaded Unity object
+
+        Cleanup();
+        if (!ActiveEnemies.Contains(enemy))
         {
             ActiveEnemies.Add(enemy);
         }
@@ -20,12 +31,35 @@ public static class EnemyRegistry
         ActiveEnemies.Remove(enemy);
     }
 
+    private static void Cleanup()
+    {
+        for (int i = ActiveEnemies.Count - 1; i >= 0; i--)
+        {
+            var e = ActiveEnemies[i];
+            var uo = e as UnityEngine.Object;
+            if (uo == null)
+            {
+                ActiveEnemies.RemoveAt(i);
+                continue;
+            }
+
+            // 비활성화(풀 반환 등)된 개체는 더 이상 '활성 적'으로 취급하지 않습니다.
+            if (e is MonoBehaviour mb && !mb.gameObject.activeInHierarchy)
+            {
+                ActiveEnemies.RemoveAt(i);
+                continue;
+            }
+        }
+    }
+
     /// <summary>
     /// 플레이어가 좌→우로 진행하는 게임에서 "앞줄(플레이어에 가장 가까운 전방)"을 우선 타겟팅하기 위한 API.
     /// 기본값(onlyAhead=true)일 때, origin.x 보다 큰(전방) 적들 중 origin 기준 x 방향으로 가장 가까운 적을 반환합니다.
     /// </summary>
     public static IEnemy GetFrontMostInRange(Vector3 origin, float range, bool onlyAhead = true)
     {
+        Cleanup();
+
         IEnemy best = null;
         float bestDx = float.MaxValue;
         float bestSqrDist = float.MaxValue;
@@ -35,14 +69,16 @@ public static class EnemyRegistry
         for (int i = ActiveEnemies.Count - 1; i >= 0; i--)
         {
             var e = ActiveEnemies[i];
-            if (e == null || !e.IsAlive)
+            if (e == null) continue;
+            if (!e.IsAlive) continue;
+
+            var tr = (e as MonoBehaviour)?.transform;
+            if (tr == null)
             {
+                // interface 참조는 Unity null semantics가 적용되지 않아 유령 엔트리가 남을 수 있으므로 여기서 정리
                 ActiveEnemies.RemoveAt(i);
                 continue;
             }
-
-            var tr = (e as MonoBehaviour)?.transform;
-            if (tr == null) continue;
 
             Vector3 pos = tr.position;
             float dx = pos.x - origin.x;
@@ -66,20 +102,23 @@ public static class EnemyRegistry
 
     public static IEnemy GetNearest(Vector3 position)
     {
+        Cleanup();
+
         IEnemy nearest = null;
         float minSqrDist = float.MaxValue;
 
         for (int i = ActiveEnemies.Count - 1; i >= 0; i--)
         {
             var e = ActiveEnemies[i];
-            if (e == null || !e.IsAlive)
+            if (e == null) continue;
+            if (!e.IsAlive) continue;
+
+            var tr = (e as MonoBehaviour)?.transform;
+            if (tr == null)
             {
                 ActiveEnemies.RemoveAt(i);
                 continue;
             }
-
-            var tr = (e as MonoBehaviour)?.transform;
-            if (tr == null) continue;
 
             float sqrDist = (tr.position - position).sqrMagnitude;
             if (sqrDist < minSqrDist)
