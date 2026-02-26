@@ -43,11 +43,8 @@ public class PoolManager : MonoBehaviour
     {
         if (instance == null) return;
 
-        // 이미 풀로 돌아가 비활성화된 오브젝트를 중복 Despawn하는 경우가 있습니다.
-        // 이때는 경고/부작용 없이 조용히 무시합니다.
         if (!instance.activeInHierarchy && !instanceToPrefabMap.ContainsKey(instance)) return;
 
-        // 1) direct match
         if (instanceToPrefabMap.TryGetValue(instance, out GameObject prefab))
         {
             poolDictionary[prefab].Release(instance);
@@ -55,7 +52,6 @@ public class PoolManager : MonoBehaviour
         }
         else
         {
-            // 2) child object passed? try root
             var root = instance.transform != null ? instance.transform.root.gameObject : null;
             if (root != null && root != instance && instanceToPrefabMap.TryGetValue(root, out prefab))
             {
@@ -64,7 +60,6 @@ public class PoolManager : MonoBehaviour
                 return;
             }
 
-            // 3) fallback: try find registered parent up the chain
             Transform t = instance.transform;
             while (t != null)
             {
@@ -78,7 +73,6 @@ public class PoolManager : MonoBehaviour
                 t = t.parent;
             }
 
-            // last resort: avoid hard break in gameplay. disable and warn once.
             Debug.LogWarning($"[PoolManager] Not registered prefab - {instance.name}");
             instance.SetActive(false);
         }

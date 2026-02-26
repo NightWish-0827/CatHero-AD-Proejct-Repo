@@ -15,7 +15,6 @@ public class OrbitingAmmoController : MonoBehaviour
     [SerializeField] private float angleOffsetDegrees = 0f;
 
     [Header("Fire Spice")]
-    [Tooltip("발사 직후 잠깐 공전 속도를 올려 리듬감을 줍니다.")]
     [SerializeField] private float fireOrbitSpeedMultiplier = 1.35f;
     [SerializeField] private float fireOrbitSpeedBoostSeconds = 0.12f;
     private float _fireBoostRemaining;
@@ -198,7 +197,6 @@ public class OrbitingAmmoController : MonoBehaviour
         {
             _fireBoostRemaining = Mathf.Max(0f, _fireBoostRemaining - Time.deltaTime);
             float t01 = fireOrbitSpeedBoostSeconds > 0f ? (_fireBoostRemaining / fireOrbitSpeedBoostSeconds) : 0f;
-            // 남은 시간이 많을수록(발사 직후) 더 빠르고, 0으로 갈수록 1로 복귀
             speedMul = Mathf.Lerp(1f, fireOrbitSpeedMultiplier, t01);
         }
 

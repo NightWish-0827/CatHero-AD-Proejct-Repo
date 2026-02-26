@@ -2,16 +2,11 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
-/// <summary>
-/// 히트 VFX 전용 풀링 컴포넌트.
-/// Spawn 시 파티클을 재생하고, 충분한 시간이 지나면 자동으로 Despawn합니다.
-/// </summary>
 public sealed class PooledHitVfx : MonoBehaviour, IPoolable
 {
     [SerializeField] private bool clearOnSpawn = true;
     [SerializeField] private bool playOnSpawn = true;
 
-    // 예측이 어려운 파티클(서브이미터 등)을 위해 여유시간을 둡니다.
     [SerializeField] private float extraLifetimeSeconds = 0.1f;
 
     private ParticleSystem[] _systems;

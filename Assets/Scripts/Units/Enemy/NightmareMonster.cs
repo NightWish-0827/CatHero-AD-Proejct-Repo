@@ -44,7 +44,6 @@ public class NightmareMonster : EnemyBase
                     targetPos,
                     Stats.MoveSpeed * Time.deltaTime);
 
-                // 비행 개체는 수평(x) 기준으로 공격 판정 (고도 때문에 거리 판정이 흔들리지 않게)
                 float absDx = Mathf.Abs(targetTransform.position.x - myTransform.position.x);
                 if (absDx <= Stats.AttackRange)
                 {
@@ -67,7 +66,6 @@ public class NightmareMonster : EnemyBase
     {
         if (Stats == null) return;
 
-        // 살짝 접근/상승 후 타격(원거리/근접 연출은 추후 교체 가능)
         var tween = Visual != null
             ? Visual.PlayPunchPosition(attackPunch, attackWindUp, attackPunchVibrato, attackPunchElasticity, attackPunchEase)
             : myTransform.DOPunchPosition(attackPunch, attackWindUp, attackPunchVibrato, attackPunchElasticity).SetEase(attackPunchEase);

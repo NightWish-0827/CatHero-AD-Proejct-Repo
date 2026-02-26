@@ -67,7 +67,6 @@ public class ItemAcquiredPopupView : MonoBehaviour
 
     private void OnDisable()
     {
-        // SafeMode: 비활성/파괴 타이밍에 Tween이 남아있으면 "missing target/field" 경고가 날 수 있어 정리한다.
         KillTween();
     }
 
@@ -115,7 +114,6 @@ public class ItemAcquiredPopupView : MonoBehaviour
         }
         catch (OperationCanceledException)
         {
-            // Spawner/Scene disable 등으로 취소될 수 있음. 안전 정리 후 종료.
         }
         finally
         {

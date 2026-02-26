@@ -261,10 +261,10 @@ MonoBehaviour:
     glowScale: {x: 1, y: 1, z: 1}
   - grade: 1
     bgSpriteOverride: {fileID: 0}
-    bgColor: {r: 0.4, g: 0.9, b: 1, a: 1}
+    bgColor: {r: 1, g: 0.8235119, b: 0.39999998, a: 1}
     iconColor: {r: 1, g: 1, b: 1, a: 1}
     popupScale: {x: 1.05, y: 1.05, z: 1.05}
-    glowColor: {r: 0.4, g: 0.9, b: 1, a: 1}
+    glowColor: {r: 1, g: 0.26885206, b: 0.24056602, a: 1}
     glowScale: {x: 1.25, y: 1.25, z: 1.25}
   - grade: 2
     bgSpriteOverride: {fileID: 0}

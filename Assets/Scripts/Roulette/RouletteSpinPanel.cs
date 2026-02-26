@@ -5,6 +5,7 @@ using Cysharp.Threading.Tasks;
 using System.Threading;
 using System;
 using DG.Tweening;
+using R3;
 
 public class RouletteSpinPanel : MonoBehaviour
 {
@@ -140,6 +141,7 @@ public class RouletteSpinPanel : MonoBehaviour
 
         void OnClick()
         {
+            GameEvents.OnRouletteSpinButtonClicked.OnNext(Unit.Default);
             tcs.TrySetResult();
         }
 

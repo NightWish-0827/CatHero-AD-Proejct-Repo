@@ -22,10 +22,8 @@ public class SecondDrawHalfCinematic : MonoBehaviour
     [SerializeField, Min(0f)] private float holdSecondsBeforeFinish = 0.0f;
 
     [Header("Particles")]
-    [Tooltip("솟구침 파티클(카메라 자식 등). 해당 파티클은 '자기 위치'에서 1회 재생만 합니다.")]
     [SerializeField] private ParticleSystem launchParticle;
 
-    [Tooltip("내려꽂힘(착지) 파티클 프리팹. 임팩트 지점(각 별 최종 위치)에 Spawn/Play 합니다.")]
     [SerializeField] private ParticleSystem impactParticlePrefab;
     [SerializeField] private Transform impactParticleParent;
     [SerializeField, Min(0f)] private float impactParticleAutoDestroySeconds = 2.0f;
@@ -35,27 +33,24 @@ public class SecondDrawHalfCinematic : MonoBehaviour
     [SerializeField] private Transform starParent;
 
     [Header("Star Offset Origin (Parent + Offset)")]
-    [Tooltip("별 생성/이동 오프셋을 계산할 기준 Transform. 비워두면 이 오브젝트(transform)를 사용합니다.")]
     [SerializeField] private Transform offsetOrigin;
 
     [Header("Star Offsets (single star, origin + offset)")]
     [SerializeField] private Vector3 spawnOffset = Vector3.zero;
-    [SerializeField] private Vector3 phase1Offset = new Vector3(0f, 3.5f, 0f); // 솟구침 도착점
-    [SerializeField] private Vector3 phase2Offset = new Vector3(2.5f, 0.5f, 0f); // 내려꽂힘 도착점(적 인접 연출)
+    [SerializeField] private Vector3 phase1Offset = new Vector3(0f, 3.5f, 0f);
+    [SerializeField] private Vector3 phase2Offset = new Vector3(2.5f, 0.5f, 0f);
 
     [Header("Star Move")]
     [SerializeField] private Ease phase1Ease = Ease.OutQuad;
     [SerializeField] private Ease phase2Ease = Ease.InQuad;
     [SerializeField, Min(0f)] private float impactDespawnDelaySeconds = 1.25f;
     [SerializeField, Min(0f)] private float phase1MoveDurationSeconds = 0.35f;
-    [Tooltip("1차 이동(솟구침) 완료 후, 내려오기 시작 전 공중 대기 시간(언스케일드).")]
     [SerializeField, Min(0f)] private float airHangSecondsBeforeDescend = 0.0f;
-    [Tooltip("2차 이동(내려꽂힘) 소요 시간(언스케일드). 느리면 줄이세요.")]
     [SerializeField, Min(0f)] private float phase2MoveDurationSeconds = 0.18f;
 
     [Header("Star Sorting (Order In Layer)")]
-    [SerializeField] private int phase1SortingOrder = -10; // 솟구침(1차 이동) 시작/진행
-    [SerializeField] private int phase2SortingOrder = 0;   // 내려꽂힘(2차 이동) 시작/진행
+    [SerializeField] private int phase1SortingOrder = -10;
+    [SerializeField] private int phase2SortingOrder = 0;
 
     [Header("Star Scale (apply instantly at phase2 start)")]
     [SerializeField] private Vector3 phase1LocalScale = Vector3.one;
@@ -107,12 +102,10 @@ public class SecondDrawHalfCinematic : MonoBehaviour
 
             CacheBaseColors();
 
-            // SR 색상 변경은 전체 duration 동안 진행(연출 톤)
             var tintTask = TintTargetsAsync(_destroyToken);
 
             PlayLaunchParticleOnce();
 
-            // 별 생성 및 1차 이동(솟구침)
             await SpawnAndMoveStarsPhase1Async(phase1MoveDurationSeconds, _destroyToken);
 
             if (airHangSecondsBeforeDescend > 0f)
@@ -120,21 +113,16 @@ public class SecondDrawHalfCinematic : MonoBehaviour
                 await UniTask.Delay(TimeSpan.FromSeconds(airHangSecondsBeforeDescend), DelayType.UnscaledDeltaTime, PlayerLoopTiming.Update, _destroyToken);
             }
 
-            // 2차 이동(내려꽂힘)
             await MoveStarsPhase2Async(phase2MoveDurationSeconds, _destroyToken);
 
-            // IMPORTANT: 틴트가 아직 진행 중이면, 원복(restore) 전에 끝까지 기다려야
-            // RestoreTargetsAsync() 도중/이후에 다시 targetColor로 덮어써지는 현상을 막을 수 있습니다.
             try
             {
                 await tintTask;
             }
             catch (OperationCanceledException)
             {
-                // destroy/disable 등으로 취소될 수 있음
             }
 
-            // 임팩트: 시간 재개 타이밍을 정확히 맞추기 위해 먼저 이벤트 발행
             GameEvents.OnSecondDrawHalfCinematicImpact.OnNext(R3.Unit.Default);
 
             PlayImpactParticles();
@@ -144,16 +132,13 @@ public class SecondDrawHalfCinematic : MonoBehaviour
                 KillAllEnemiesOnce();
             }
 
-            // SR 원복(디밍/색 변화 X)
             await RestoreTargetsAsync(_destroyToken);
 
-            // 추가 홀드가 필요하면 마지막에 적용
             if (holdSecondsBeforeFinish > 0f)
             {
                 await UniTask.Delay(TimeSpan.FromSeconds(holdSecondsBeforeFinish), DelayType.UnscaledDeltaTime, PlayerLoopTiming.Update, _destroyToken);
             }
 
-            // 별 정리
             ScheduleDespawnStars();
 
             GameEvents.OnSecondDrawHalfCinematicFinished.OnNext(R3.Unit.Default);
@@ -299,10 +284,6 @@ public class SecondDrawHalfCinematic : MonoBehaviour
         Vector3 basePos = origin.position;
         float dur = Mathf.Max(0.01f, duration);
 
-        // 요구사항:
-        // - 서서히 변경 X
-        // - 내려오기 시작할 때 sortingOrder를 즉각 0으로
-        // - 내려오기 시작할 때 스케일도 즉각 변경 후 내려옴
         for (int i = 0; i < _spawnedStars.Count; i++)
         {
             var star = _spawnedStars[i];
@@ -330,7 +311,6 @@ public class SecondDrawHalfCinematic : MonoBehaviour
             await tweens[i].AsyncWaitForCompletion().AsUniTask().AttachExternalCancellation(token);
         }
 
-        // 요구사항: 목표 위치 도착 즉시 별은 사라져야 함.
         for (int i = 0; i < _spawnedStars.Count; i++)
         {
             var star = _spawnedStars[i];
@@ -374,13 +354,10 @@ public class SecondDrawHalfCinematic : MonoBehaviour
         _spawnedStars.Clear();
     }
 
+    // 이거 왜 했지?
     private static void SetSortingOrderRecursive(Transform root, int order)
     {
         if (root == null) return;
-
-        // 프리팹 구조가 바뀌거나(중첩/비활성 포함), 런타임에 렌더러가 추가되어도 항상 하위 전체에 동일 적용되게 한다.
-        // - SpriteRenderer
-        // - ParticleSystemRenderer(파티클 sortingOrder)
 
         var spriteRenderers = root.GetComponentsInChildren<SpriteRenderer>(true);
         if (spriteRenderers != null)
@@ -409,7 +386,6 @@ public class SecondDrawHalfCinematic : MonoBehaviour
     {
         if (launchParticle == null) return;
 
-        // 반복 테스트/재진입 시 "겹침" 방지
         SetUnscaledTimeRecursive(launchParticle, true);
         launchParticle.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         launchParticle.Play(true);

@@ -19,44 +19,31 @@ public class Projectile : MonoBehaviour, IPoolable
 
     [Header("Movement")]
     [SerializeField] private MovementMode movementMode = MovementMode.HomingSpeed;
-
-    [Tooltip("TimedCurve 모드에서만 사용. Launcher가 비행 시간을 넘기지 않으면 이 값을 사용합니다.")]
     [SerializeField] private float defaultFlightTime = 0.25f;
-
-    [Tooltip("0~1 진행률에 적용되는 속도 커브(타격감/가속감 조절)")]
     [SerializeField] private AnimationCurve progressCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
     [Header("Arc (TimedCurve)")]
-    [Tooltip("2D(XY)라면 기본값(Vector3.forward) 유지 권장. 곡사 방향(수직/좌우)을 정의하는 평면 노멀입니다.")]
     [SerializeField] private Vector3 arcPlaneNormal = new Vector3(0f, 0f, 1f);
 
-    [Tooltip("곡사 최대 오프셋(월드 유닛). 0이면 직선과 동일.")]
     [SerializeField] private float arcAmplitude = 1.2f;
 
-    [Tooltip("곡사 방향(위/아래/랜덤)")]
     [SerializeField] private ArcSideMode arcSideMode = ArcSideMode.RandomUpOrDown;
 
-    [Tooltip("기본 곡사 각도(도). 0이면 기본 '위/아래' 방향으로 휩니다.")]
     [SerializeField] private float arcAngleDegrees = 0f;
 
-    [Tooltip("발사마다 arcAngleDegrees에 더해지는 랜덤 편차(도).")]
     [SerializeField] private float arcAngleJitterDegrees = 25f;
 
-    [Tooltip("0~1 진행률에 따른 곡사 높이 프로파일(끝은 0이 되어야 타겟에 정확히 도착)")]
     [SerializeField] private AnimationCurve arcProfile = new AnimationCurve(
         new Keyframe(0f, 0f),
         new Keyframe(0.5f, 1f),
         new Keyframe(1f, 0f)
     );
 
-    [Tooltip("타겟 위치를 발사 시점에 고정합니다(곡사 느낌 강화). 끄면 타겟을 따라가며 곡사합니다.")]
     [SerializeField] private bool lockTargetPositionOnFire = true;
 
-    [Tooltip("TimedCurve 종료 시점에 타겟이 살아있으면 거리와 무관하게 데미지를 적용합니다(연출 우선).")]
     [SerializeField] private bool guaranteeHitOnEnd = true;
 
     [Header("Hold (Optional)")]
-    [Tooltip("대기 상태에서 앵커(플레이어)를 따라다닙니다.")]
     [SerializeField] private bool followAnchorWhileHolding = true;
 
     private Transform _target;
@@ -84,16 +71,13 @@ public class Projectile : MonoBehaviour, IPoolable
     [SerializeField] private ProjectileLineTrail lineTrail;
 
     [Header("VFX Trail Particle (Optional)")]
-    [Tooltip("격발 중에만 켜지는 Trail 파티클 루트(GameObject). LineTrail과 동일 라이프사이클로 SetActive로 제어됩니다.")]
     [SerializeField] private GameObject trailParticleRoot;
-    [Tooltip("TrailParticleRoot를 켤 때마다 파티클을 Clear+Play로 재시작합니다.")]
     [SerializeField] private bool restartTrailParticlesOnEnable = true;
 
     private bool _trailParticleActive;
     private ParticleSystem[] _trailParticleSystems;
 
     [Header("VFX Hit (Optional)")]
-    [Tooltip("명중 시 해당 위치에 Spawn되는 히트 VFX 프리팹(투사체 자식으로 두지 마세요).")]
     [SerializeField] private GameObject hitVfxPrefab;
     [SerializeField] private Vector3 hitVfxPositionOffset = Vector3.zero;
     [SerializeField] private bool hitVfxUseProjectileRotation = false;
@@ -294,7 +278,6 @@ public class Projectile : MonoBehaviour, IPoolable
         Vector3 perp = Vector3.Cross(planeNormal, toEnd).normalized;
         if (perp.sqrMagnitude < 0.0001f) perp = Vector3.up;
 
-        // "Up" 기준을 월드 +Y로 맞춰두면, 좌/우 방향에 따라 곡사 방향이 뒤집히는 문제를 줄일 수 있습니다.
         if (Vector3.Dot(perp, Vector3.up) < 0f) perp = -perp;
 
         float sign = arcSideMode switch
@@ -444,8 +427,6 @@ public class Projectile : MonoBehaviour, IPoolable
     {
         if (PoolManager.Instance != null)
         {
-            // PoolManager는 Spawn된 "루트 인스턴스"를 키로 관리합니다.
-            // Projectile이 자식에 붙어있는 프리팹 구조에서는 자식을 Despawn하면 Not registered 경고가 발생할 수 있으므로 root로 반납합니다.
             PoolManager.Instance.Despawn(transform.root.gameObject);
         }
         else

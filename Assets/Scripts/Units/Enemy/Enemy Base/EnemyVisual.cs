@@ -13,7 +13,6 @@ public class EnemyVisual : MonoBehaviour
 
     [SerializeField, Min(0f)] private float hitFlashDuration = 0.1f;
     [SerializeField] private Color hitFlashColor = Color.red;
-    [Tooltip("비워두면 visualRoot(또는 자동 선택된 트윈 루트) 하위의 SpriteRenderer들을 자동 수집합니다.")]
     [SerializeField] private SpriteRenderer[] hitFlashRenderers;
 
     [SerializeField] private Vector3 hitPunchScale = new Vector3(-0.2f, -0.2f, -0.2f);
@@ -56,8 +55,6 @@ public class EnemyVisual : MonoBehaviour
             spriteRenderer = tweenRoot.GetComponentInChildren<SpriteRenderer>(true);
         }
 
-        // 스케일/펀치/사망 스케일 트윈이 "실제 보이는 스프라이트"에 적용되도록 보정
-        // (색상 플래시는 spriteRenderer에 직접 걸리므로 이 불일치가 있으면 스케일 연출만 안 보이는 케이스가 생김)
         if (spriteRenderer != null && tweenRoot != null && !spriteRenderer.transform.IsChildOf(tweenRoot))
         {
             tweenRoot = spriteRenderer.transform;
@@ -65,8 +62,6 @@ public class EnemyVisual : MonoBehaviour
 
         if (tweenRoot == null) tweenRoot = transform;
 
-        // IMPORTANT: base 포즈는 최초 1회만 캡처해야 함.
-        // (사망 트윈으로 스케일이 0이 된 상태에서 재캡처되면, 풀 재사용 시 영구적으로 안 보이는 문제가 발생)
         if (captureBasePose && !basePoseCaptured)
         {
             baseRoot = tweenRoot;
@@ -84,7 +79,6 @@ public class EnemyVisual : MonoBehaviour
         }
         else
         {
-            // visualRoot가 지정되어 있다면 그 하위, 아니면 base/tweenRoot 하위에서 수집
             var root = visualRoot != null ? visualRoot : (baseRoot != null ? baseRoot : tweenRoot);
             if (root == null) root = transform;
             cachedFlashRenderers = root.GetComponentsInChildren<SpriteRenderer>(true);
@@ -104,9 +98,6 @@ public class EnemyVisual : MonoBehaviour
         var parent = root.parent;
         if (parent == null) return punch;
 
-        // 부모(예: Enemy Prefab)가 0.5 스케일이면, 동일한 "월드 상" 펀치 강도를 내기 위해 local punch를 보정해야 함.
-        // legacy는 루트(EnemyBase)에서 펀치가 걸려서 parent 스케일의 영향을 받지 않았지만,
-        // 현재는 Visual 하위로 제한되며 parent 스케일의 영향을 받아 펀치가 약해 보일 수 있음.
         Vector3 ps = parent.lossyScale;
         float sx = Mathf.Max(0.0001f, Mathf.Abs(ps.x));
         float sy = Mathf.Max(0.0001f, Mathf.Abs(ps.y));
@@ -143,7 +134,6 @@ public class EnemyVisual : MonoBehaviour
             root.localScale = baseLocalScale;
         }
 
-        // 풀 재사용 시 알파/색상 복구 (대상 SR가 여러 개인 경우 포함)
         if (cachedFlashRenderers != null && cachedFlashRenderers.Length > 0)
         {
             for (int i = 0; i < cachedFlashRenderers.Length; i++)
@@ -182,17 +172,14 @@ public class EnemyVisual : MonoBehaviour
         EnsureFlashRenderersCached();
         if (cachedFlashRenderers == null || cachedFlashRenderers.Length == 0) return;
 
-        // 이전 플래시가 남아있으면 종료 (색상은 아래 Restore에서 정리)
         if (hitFlashTween != null && hitFlashTween.active) hitFlashTween.Kill();
 
-        // 원색 캡처(피격 시점의 실제 색상 기준으로 복원)
         for (int i = 0; i < cachedFlashRenderers.Length; i++)
         {
             var r = cachedFlashRenderers[i];
             flashOriginalColors[i] = r != null ? r.color : Color.white;
         }
 
-        // 최적화: 렌더러 개수만큼 트윈을 만들지 않고, 단일 드라이버 트윈으로 일괄 적용
         float t = 0f;
         hitFlashTween = DOTween.To(() => t, v =>
         {

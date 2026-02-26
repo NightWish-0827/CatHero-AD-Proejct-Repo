@@ -132,7 +132,6 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
 
             if (currentState == EnemyState.Chasing)
             {
-                // 지상 적 기본형: y축 추적을 하지 않고, 수평(x) 기준으로만 전진/공격 판정
                 float absDx = Mathf.Abs(targetTransform.position.x - myTransform.position.x);
                 if (absDx <= _stat.AttackRange)
                 {
@@ -210,8 +209,6 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         if (_healthBar != null) _healthBar.SetVisible(false);
 
         var seq = _visual != null ? _visual.CreateDieSequence() : DOTween.Sequence();
-        // timeScale=0(룰렛/시네마틱) 상황에서 scaled tween은 영구 대기 상태가 될 수 있으므로,
-        // "죽음 연출 + 풀 반환"이 막히지 않도록 해당 케이스에만 언스케일드로 전환합니다.
         if (Time.timeScale <= 0.0001f && seq != null && seq.IsActive())
         {
             seq.SetUpdate(true);
@@ -223,11 +220,9 @@ public abstract class EnemyBase : MonoBehaviour, IEnemy
         }
         catch (OperationCanceledException)
         {
-            // 풀 반환/씬 전환 등으로 취소될 수 있음. 이 경우에도 아래 finally에서 안전 정리 시도.
         }
         finally
         {
-            // 죽음 시퀀스가 어떤 이유로 중단되더라도, 적이 registry에 남아 플레이어/웨이브 진행이 멈추지 않도록 보장합니다.
             var root = transform != null ? transform.root?.gameObject : null;
             if (root == null) root = gameObject;
 

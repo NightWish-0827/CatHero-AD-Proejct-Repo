@@ -17,7 +17,7 @@ public static class EnemyRegistry
     public static void Register(IEnemy enemy)
     {
         if (enemy == null) return;
-        if ((enemy as UnityEngine.Object) == null) return; // destroyed/unloaded Unity object
+        if ((enemy as UnityEngine.Object) == null) return;
 
         Cleanup();
         if (!ActiveEnemies.Contains(enemy))
@@ -43,7 +43,6 @@ public static class EnemyRegistry
                 continue;
             }
 
-            // 비활성화(풀 반환 등)된 개체는 더 이상 '활성 적'으로 취급하지 않습니다.
             if (e is MonoBehaviour mb && !mb.gameObject.activeInHierarchy)
             {
                 ActiveEnemies.RemoveAt(i);
@@ -52,10 +51,6 @@ public static class EnemyRegistry
         }
     }
 
-    /// <summary>
-    /// 플레이어가 좌→우로 진행하는 게임에서 "앞줄(플레이어에 가장 가까운 전방)"을 우선 타겟팅하기 위한 API.
-    /// 기본값(onlyAhead=true)일 때, origin.x 보다 큰(전방) 적들 중 origin 기준 x 방향으로 가장 가까운 적을 반환합니다.
-    /// </summary>
     public static IEnemy GetFrontMostInRange(Vector3 origin, float range, bool onlyAhead = true)
     {
         Cleanup();
@@ -75,7 +70,6 @@ public static class EnemyRegistry
             var tr = (e as MonoBehaviour)?.transform;
             if (tr == null)
             {
-                // interface 참조는 Unity null semantics가 적용되지 않아 유령 엔트리가 남을 수 있으므로 여기서 정리
                 ActiveEnemies.RemoveAt(i);
                 continue;
             }
@@ -87,8 +81,6 @@ public static class EnemyRegistry
             float sqrDist = (pos - origin).sqrMagnitude;
             if (sqrDist > rangeSqr) continue;
 
-            // "전방(앞줄)부터 제거"를 위해 x방향으로 가장 가까운 적을 우선.
-            // 동률이면 전체 거리(제곱)로 타이브레이크.
             if (dx < bestDx || (Mathf.Approximately(dx, bestDx) && sqrDist < bestSqrDist))
             {
                 best = e;

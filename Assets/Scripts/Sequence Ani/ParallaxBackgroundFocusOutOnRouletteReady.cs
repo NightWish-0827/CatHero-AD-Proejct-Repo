@@ -10,17 +10,17 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
     [SerializeField] private bool includeInactiveChildren = true;
     [SerializeField] private SpriteRenderer[] excludeSpriteRenderers;
 
-    [Header("Dim Settings - Ready (Spin 가능 표시)")]
+    [Header("Dim Settings - Ready (Ready Dim)")]
     [SerializeField, Range(0f, 1f)] private float readyDimMultiplier = 0.55f;
     [SerializeField, Min(0f)] private float readyDimDuration = 0.18f;
     [SerializeField] private Ease readyDimEase = Ease.OutQuad;
 
-    [Header("Dim Settings - Spinning (2단계)")]
+    [Header("Dim Settings - Spinning (Spinning Dim)")]
     [SerializeField, Range(0f, 1f)] private float spinningDimMultiplier = 0.35f;
     [SerializeField, Min(0f)] private float spinningDimDuration = 0.25f;
     [SerializeField] private Ease spinningDimEase = Ease.OutQuad;
 
-    [Header("Dim Settings - Clear (복귀)")]
+    [Header("Dim Settings - Clear (Clear From Ready)")]
     [SerializeField, Min(0f)] private float clearFromReadyDuration = 0.22f;
     [SerializeField, Min(0f)] private float clearFromSpinningDelay = 0.06f;
     [SerializeField, Min(0f)] private float clearFromSpinningDuration = 0.35f;
@@ -103,7 +103,6 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
             return;
         }
 
-        // exclude 목록 필터링 (하프 시네마틱 등 외부에서 색을 직접 제어하는 SR을 디밍 시스템에서 제외)
         int count = 0;
         for (int i = 0; i < all.Length; i++)
         {
@@ -161,7 +160,6 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
 
     private void TweenToState()
     {
-        // 우선순위: Spinning(2단계) > Ready(1단계) > Clear
         DimPhase next = _isSpinning ? DimPhase.Spinning : (_isReady ? DimPhase.Ready : DimPhase.Clear);
         DimPhase prev = _phase;
         _phase = next;
@@ -178,7 +176,6 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
             return;
         }
 
-        // Clear(복귀) 시에는 Spinning에서 빠질 때만 살짝 '여운'을 주면 덜 어색함.
         if (prev == DimPhase.Spinning)
         {
             TweenTo(1f, clearFromSpinningDuration, clearEase, clearFromSpinningDelay);
@@ -204,11 +201,10 @@ public class ParallaxBackgroundFocusOutOnRouletteReady : MonoBehaviour
             }, targetMultiplier, duration)
             .SetEase(ease)
             .SetDelay(Mathf.Max(0f, delaySeconds))
-            .SetUpdate(true) // timeScale=0에서도 동작
+            .SetUpdate(true)
             .SetTarget(this)
             .OnComplete(() =>
             {
-                // "완전 복구" 지점에서 이벤트를 쏴서, 후속 시퀀스가 정확히 이어지게 한다.
                 if (_phase == DimPhase.Clear && Mathf.Approximately(_currentMultiplier, 1f))
                 {
                     GameEvents.OnBackgroundDimCleared.OnNext(R3.Unit.Default);

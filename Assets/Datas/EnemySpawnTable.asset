@@ -44,3 +44,26 @@ MonoBehaviour:
     clusterCount: {x: 1, y: 1}
     clusterSpacingX: 1
     clusterVerticalJitter: 1
+  - id: 
+    prefab: {fileID: 578481109589682359, guid: 93454dd9966a1fb418c9323e41379467, type: 3}
+    weight: 0
+    surface: 1
+    pattern: 1
+    spawnYOffset: 1.5
+    lockYAfterSpawn: 0
+    singleVerticalJitter: 0
+    groupCount: 10
+    groupOffsets:
+    - {x: 0, y: 1}
+    - {x: 1, y: 0}
+    - {x: 2, y: 1}
+    - {x: 3, y: 0}
+    - {x: 4, y: 1}
+    - {x: 5, y: 0}
+    - {x: 6, y: 1}
+    - {x: 7, y: 0}
+    - {x: 8, y: 1}
+    - {x: 9, y: 0}
+    clusterCount: {x: 1, y: 1}
+    clusterSpacingX: 1
+    clusterVerticalJitter: 1

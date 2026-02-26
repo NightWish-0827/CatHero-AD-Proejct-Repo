@@ -19,6 +19,9 @@ public class CameraFollow : MonoBehaviour
 
     public Transform Target { get => target; set => target = value; }
 
+    [SerializeField] private bool isActive = true;
+    public bool IsActive { get => isActive; set => isActive = value; }
+
     private int _lastUpdatedFrame = -1;
 
     private void Awake()
@@ -52,6 +55,7 @@ public class CameraFollow : MonoBehaviour
 
     private void Follow(float deltaTime)
     {
+        if (!isActive) return;
         if (target == null) return;
 
         Vector3 desired = target.position + offset;

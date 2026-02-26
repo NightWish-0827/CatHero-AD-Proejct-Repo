@@ -1,7 +1,6 @@
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
-using System;
 using Random = UnityEngine.Random;
 
 [SceneReferral]
@@ -34,7 +33,7 @@ public class EnemySpawner : MonoBehaviour
         cts?.Cancel();
         cts = new CancellationTokenSource();
         currentWave = 0;
-        nextIntervalSpawnAt = Time.time; // 첫 분기는 즉시 시작
+        nextIntervalSpawnAt = Time.time;
         nextEntryIndex = 0;
 
         SpawnLoopAsync(cts.Token).Forget();
@@ -52,9 +51,6 @@ public class EnemySpawner : MonoBehaviour
     {
         while (isRunning && !token.IsCancellationRequested)
         {
-            // 분기(Entry) 진행 방식:
-            // - 이전 분기의 적을 모두 제거해야 다음 분기가 시작된다.
-            // - 분기 클리어 후 spawnInterval 만큼 기다렸다가 다음 분기를 스폰한다.
             await UniTask.WaitUntil(
                 () => Time.time >= nextIntervalSpawnAt && EnemyRegistry.Enemies.Count == 0,
                 cancellationToken: token);
@@ -70,7 +66,6 @@ public class EnemySpawner : MonoBehaviour
 
             GameEvents.OnWaveCleared.OnNext(currentWave);
 
-            // 다음 분기는 "클리어 시점" 기준으로 딜레이를 적용
             nextIntervalSpawnAt = Time.time + spawnInterval;
         }
     }
@@ -86,14 +81,12 @@ public class EnemySpawner : MonoBehaviour
 
         if (hasTable)
         {
-            // Entries 한 개를 "한 분기"로 보고, 분기당 1회만 스폰한다.
             var entry = ChooseNextEntrySequential(spawnTable);
             if (entry == null) return;
             SpawnFromEntry(entry, basePos);
             return;
         }
 
-        // 폴백(테이블 미사용): 기존처럼 웨이브당 여러 마리 생성
         int count = Mathf.Max(1, maxEnemiesPerWave);
         float spacingX = Mathf.Max(0f, clusterSpacingX);
         for (int i = 0; i < count; i++)
@@ -107,8 +100,6 @@ public class EnemySpawner : MonoBehaviour
     {
         if (playerTarget == null) return Vector3.zero;
 
-        // 플레이어가 좌→우로 진행하므로, 스폰은 항상 플레이어 전방(+X)에서 발생.
-        // 지상 적이 플레이어의 Y(중심점)를 추적해서 "뜸" 현상이 생기지 않도록 기본 Y는 지면 고정값 사용.
         return new Vector3(
             playerTarget.position.x + spawnDistanceAhead,
             groundY,
@@ -131,7 +122,6 @@ public class EnemySpawner : MonoBehaviour
         var enemy = instance.GetComponentInChildren<IEnemy>();
         if (enemy != null) enemy.Initialize(playerTarget);
 
-        // 지상/공중 타입에 따라 Y 고정 처리
         var enemyBase = enemy as EnemyBase;
         if (enemyBase != null && entry != null)
         {
@@ -142,7 +132,6 @@ public class EnemySpawner : MonoBehaviour
         }
         else if (enemyBase != null)
         {
-            // 폴백: 기존 프리팹(지상)을 groundY에 고정
             enemyBase.ConfigureVerticalLock(true, groundY);
         }
     }
@@ -154,7 +143,6 @@ public class EnemySpawner : MonoBehaviour
         GameObject prefab = entry.prefab != null ? entry.prefab : enemyPrefab;
         if (prefab == null) return;
 
-        // 2분류: (지상/공중). 단일은 군집 인원 1로 처리.
         bool isGround = entry.surface == EnemySpawnSurface.Ground;
         float baseY = isGround ? groundY : (groundY + entry.spawnYOffset);
         Vector3 typedBasePos = new Vector3(basePos.x, baseY, basePos.z);
@@ -183,10 +171,6 @@ public class EnemySpawner : MonoBehaviour
     {
         if (entry == null) return;
 
-        // 우선순위:
-        // 1) groupOffsets(명시 포지션)
-        // 2) groupCount(자동 라인 배치)
-        // 3) 레거시 pattern/clusterCount 폴백 (기존 에셋 호환)
         if (entry.groupOffsets != null && entry.groupOffsets.Count > 0)
         {
             for (int i = 0; i < entry.groupOffsets.Count; i++)
@@ -201,7 +185,6 @@ public class EnemySpawner : MonoBehaviour
 
         int count = Mathf.Max(1, entry.groupCount);
 
-        // groupCount가 기본값(1)이고 레거시가 Cluster라면 기존 동작 유지
         if (count <= 1 && entry.pattern == EnemySpawnPattern.Cluster)
         {
             int min = Mathf.Max(2, entry.clusterCount.x);

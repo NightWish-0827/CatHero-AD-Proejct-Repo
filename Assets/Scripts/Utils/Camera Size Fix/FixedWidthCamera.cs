@@ -22,10 +22,8 @@ public class FixedWidthCamera : MonoBehaviour
         Refresh();
     }
 
-    // 에디터에서 값 변경 시 즉시 반영
     void OnValidate() => Refresh();
 
-    // 성능 최적화: 매 프레임 체크 대신 필요할 때만 호출
     public void Refresh()
     {
         if (_cam == null) _cam = GetComponent<Camera>();
@@ -52,7 +50,6 @@ public class FixedWidthCamera : MonoBehaviour
         };
     }
 
-    // 캔버스 크기 변경 등 해상도 변화 감지 시 외부에서 호출 가능
     void OnRectTransformDimensionsChange()
     {
         if (_lastScreenWidth != Screen.width || _lastScreenHeight != Screen.height)

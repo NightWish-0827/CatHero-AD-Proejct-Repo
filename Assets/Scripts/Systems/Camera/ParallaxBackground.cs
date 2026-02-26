@@ -4,12 +4,8 @@ using UnityEngine.Serialization;
 [DisallowMultipleComponent]
 public class ParallaxBackground : MonoBehaviour
 {
-    [FormerlySerializedAs("autoUseThisCameraTransform")]
     [SerializeField] private bool autoUseThisTransform = true;
-
-    [FormerlySerializedAs("cameraTransform")]
     [SerializeField] private Transform followTransform;
-
     [SerializeField] private bool autoFindLayersInChildren = true;
     [SerializeField] private ParallaxRepeatingLayer[] layers;
 
